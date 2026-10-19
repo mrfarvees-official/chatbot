@@ -6,6 +6,7 @@
     "dev": "next dev",
     "test": "vitest run",
     "build": "next build",
+    "admin:create": "node scripts/create-admin.mjs",
     "start": "next start",
     "lint": "eslint"
   },
