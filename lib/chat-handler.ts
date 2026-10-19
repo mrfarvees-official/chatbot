@@ -35,6 +35,21 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
   "gmail_modify_labels",
   "gmail_list_attachments",
   "gmail_open_attachment",
+  "meet_join_meeting",
+  "meet_toggle_mic",
+  "meet_toggle_camera",
+  "meet_share_screen",
+  "meet_leave_call",
+  "meet_list_participants",
+  "meet_manage_participant",
+  "meet_read_chat",
+  "meet_send_chat",
+  "meet_toggle_captions",
+  "meet_read_captions",
+  "meet_toggle_recording",
+  "meet_raise_hand",
+  "meet_send_reaction",
+  "meet_get_summary",
 ]);
 
 type ToolCallInput = {
