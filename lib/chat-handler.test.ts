@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildSystemPrompt } from "./llm";
 import { ndjsonEvent, parseMessages, sanitizeTools } from "./chat-handler";
 
 describe("chat validation", () => {
@@ -42,6 +43,41 @@ describe("tool sanitization", () => {
 
   it("drops oversized descriptions", () => {
     expect(sanitizeTools([valid("gmail_compose_draft", "x".repeat(501))])).toEqual([]);
+  });
+
+  it("preserves the Gmail draft schema sent to the model", () => {
+    const [tool] = sanitizeTools([
+      {
+        name: "gmail_compose_draft",
+        description: "Open a Gmail draft without sending it.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            to: { type: "string" },
+            subject: { type: "string" },
+            body: { type: "string" },
+          },
+          required: ["to", "subject", "body"],
+        },
+      },
+    ]);
+    expect(tool).toMatchObject({
+      type: "function",
+      function: {
+        name: "gmail_compose_draft",
+        parameters: {
+          required: ["to", "subject", "body"],
+        },
+      },
+    });
+  });
+});
+
+describe("tool-capable model prompt", () => {
+  it("requires explicit email requests to use an available browser tool", () => {
+    const prompt = buildSystemPrompt([], true);
+    expect(prompt).toContain("call the appropriate email tool");
+    expect(prompt).toContain("Never invent email addresses");
   });
 });
 
