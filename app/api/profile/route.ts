@@ -1,7 +1,7 @@
 import { requireUser, unauthorized } from "@/lib/auth";
 import { getSupabaseAuth } from "@/lib/supabase-auth";
 
-const fields = ["first_name", "last_name", "full_name", "mobile_number"] as const;
+const fields = ["first_name", "last_name", "mobile_number"] as const;
 type ProfileField = (typeof fields)[number];
 
 function clean(value: unknown) {
@@ -40,10 +40,14 @@ export async function PATCH(req: Request) {
     values[field] = value;
   }
 
+  const fullName = [values.first_name, values.last_name]
+    .filter((value): value is string => Boolean(value))
+    .join(" ") || null;
+
   const supabase = await getSupabaseAuth();
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ id: user.id, ...values, updated_at: new Date().toISOString() })
+    .upsert({ id: user.id, ...values, full_name: fullName, updated_at: new Date().toISOString() })
     .select("first_name, last_name, full_name, mobile_number, updated_at")
     .single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

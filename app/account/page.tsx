@@ -5,14 +5,12 @@ import { useEffect, useState } from "react";
 type Profile = {
   first_name: string | null;
   last_name: string | null;
-  full_name: string | null;
   mobile_number: string | null;
 };
 
 const empty: Profile = {
   first_name: "",
   last_name: "",
-  full_name: "",
   mobile_number: "",
 };
 
@@ -61,7 +59,7 @@ export default function Account() {
       <p className="text-sm text-neutral-600">
         These values can fill authenticated browser-tool drafts. They are not visible to other users.
       </p>
-      {(["first_name", "last_name", "full_name", "mobile_number"] as const).map((field) => (
+      {(["first_name", "last_name", "mobile_number"] as const).map((field) => (
         <label key={field} className="block space-y-1">
           <span className="text-sm capitalize">{field.replaceAll("_", " ")}</span>
           <input
@@ -71,6 +69,9 @@ export default function Account() {
           />
         </label>
       ))}
+      <p className="text-sm text-neutral-600">
+        Full name: {[profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Not set"}
+      </p>
       <button className="rounded-xl bg-blue-600 px-4 py-2 text-white" onClick={save}>
         Save profile
       </button>

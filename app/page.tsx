@@ -27,6 +27,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [extensionState, setExtensionState] = useState<"checking" | "connected" | "missing">("checking");
   const [extensionVersion, setExtensionVersion] = useState("");
+  const [auth, setAuth] = useState<{ status: "checking" | "signed_in" | "signed_out"; email?: string }>({ status: "checking" });
   const [streaming, setStreaming] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -38,6 +39,13 @@ export default function Home() {
         setExtensionVersion(result.version ?? "");
       } else setExtensionState("missing");
     });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => setAuth(data?.authenticated ? { status: "signed_in", email: data.email } : { status: "signed_out" }))
+      .catch(() => setAuth({ status: "signed_out" }));
   }, []);
 
   useEffect(() => {
@@ -149,7 +157,24 @@ export default function Home() {
           ) : (
             <span>Checking extension…</span>
           )}
-          <a className="underline" href="/login">Sign in for advanced Gmail tools</a>
+          {auth.status === "signed_in" ? (
+            <span className="flex items-center gap-2">
+              <a className="underline" href="/account">Signed in{auth.email ? ` · ${auth.email}` : ""}</a>
+              <button
+                className="underline"
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  window.location.reload();
+                }}
+              >
+                Sign out
+              </button>
+            </span>
+          ) : auth.status === "checking" ? (
+            <span>Checking sign-in…</span>
+          ) : (
+            <a className="underline" href="/login">Sign in for advanced Gmail tools</a>
+          )}
         </div>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto pb-4">

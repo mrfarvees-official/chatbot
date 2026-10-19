@@ -1,10 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated) window.location.replace(data.isAdmin ? "/admin" : "/account");
+      })
+      .catch(() => {});
+  }, []);
 
   async function submit() {
     setBusy(true);
