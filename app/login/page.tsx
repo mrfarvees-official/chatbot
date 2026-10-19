@@ -6,11 +6,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("error") === "google"
-      ? "Google sign-in could not be started. Check that Google is enabled in Supabase."
-      : "",
-  );
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -34,14 +30,8 @@ export default function Login() {
     <main className="mx-auto mt-32 max-w-sm space-y-3 p-4">
       <h1 className="text-xl font-semibold">Sign in</h1>
       {error && <p className="rounded-lg border border-red-300 p-3 text-sm text-red-700">{error}</p>}
-      <a
-        className="block w-full rounded-xl border px-4 py-2 text-center"
-        href="/api/auth/google"
-      >
-        Continue with Google
-      </a>
       <p className="text-sm text-neutral-500">
-        Sign in with Google or a local email account. Admin access still requires the email to be listed in ADMIN_EMAILS.
+        Local SQLite email accounts are used for the chatbot and admin portal. Admin access still requires the email to be listed in ADMIN_EMAILS.
       </p>
       <div className="space-y-2 border-t pt-3">
         <input className="w-full rounded-xl border px-4 py-2" type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />

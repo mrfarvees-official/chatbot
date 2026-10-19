@@ -6,7 +6,7 @@ This project has one public portfolio chatbot at `/`, an admin-only knowledge-ba
 
 - Public chat posts to `/api/chat`. It retrieves relevant public knowledge once, makes one streaming NVIDIA model call, and returns NDJSON events.
 - If the visitor has Site Agent installed, the browser supplies Gmail and draft/compose tools. The server exposes only the safe subset publicly; authenticated sessions unlock the additional Gmail search/read/reply/archive/delete/label tools. The browser runs tool rounds and sends tool results back in a new request.
-- Authentication uses direct Google OAuth or a local email/password account. Sessions, profiles, documents, chunks, and embeddings are stored in the local SQLite database through Drizzle. Admin access requires the `ADMIN_EMAILS` allowlist.
+- Authentication uses local email/password accounts only. Sessions, profiles, documents, chunks, and embeddings are stored in the local SQLite database through Drizzle. Admin access requires the `ADMIN_EMAILS` allowlist.
 - Every ingested document is public to visitors. Do not ingest secrets or personal contact details.
 
 ## Environment
@@ -15,12 +15,10 @@ Copy the names from `.env.example` into the deployment environment. Never commit
 
 | Variable | Purpose |
 | --- | --- |
-| `APP_URL` | Public application URL and OAuth redirect base |
+| `APP_URL` | Public application URL |
 | `OWNER_NAME` | Owner name used by the public assistant |
 | `OWNER_CONTACT_EMAIL` | Contact address used when context lacks an answer |
-| `ADMIN_EMAILS` | Comma-separated Google/local email admin allowlist |
-| `GOOGLE_CLIENT_ID` | Google OAuth web client ID |
-| `GOOGLE_CLIENT_SECRET` | Server-only Google OAuth client secret |
+| `ADMIN_EMAILS` | Comma-separated local email admin allowlist |
 | `LOCAL_DB_PATH` | SQLite database path, default `.data/chatbot.sqlite` |
 | `NVIDIA_API_KEY` | NVIDIA API key |
 | `NVIDIA_BASE_URL` | NVIDIA OpenAI-compatible endpoint |
@@ -40,11 +38,8 @@ Back up that file when deploying. Set `LOCAL_DB_PATH` to an absolute persistent
 path in production. The old files in `assets/sql/` are legacy Supabase scripts
 and are not used by the application.
 
-For Google sign-in, create a Web OAuth client in Google Cloud and set
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Register
-`http://localhost:3000/api/auth/callback` and the production equivalent as
-authorized redirect URIs. Local email/password accounts are stored in SQLite;
-passwords are salted and hashed with Node's built-in `scrypt`.
+Local email/password accounts are stored in SQLite; passwords are salted and
+hashed with Node's built-in `scrypt`.
 
 ## Development
 
@@ -65,7 +60,7 @@ See `chatbot-agent-extension/README.md` for extension build and unpacked-install
 
 ## Manual test plan
 
-1. Open `/login` and sign in with Google or create a local email/password account.
+1. Open `/login` and create or sign in to a local email/password account.
 2. Open `/` and confirm unauthenticated users cannot submit chat requests.
 3. Ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
 3. Confirm unauthenticated `/admin` and `/api/admin/*` requests return 401.

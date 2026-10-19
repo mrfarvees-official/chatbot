@@ -187,7 +187,7 @@ export default function Home() {
       </div>
       {auth.status === "signed_out" && (
         <p className="pb-2 text-sm text-neutral-600">
-          Sign in with Google to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
+          Sign in with a local email account to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
         </p>
       )}
       {status && <p className="pb-2 text-sm text-neutral-600">{status}</p>}
