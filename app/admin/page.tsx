@@ -24,7 +24,7 @@ async function api(url: string, init?: RequestInit) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
-    window.location.href = "/login";
+    window.location.replace("/login");
     throw new Error("Signed out");
   }
   if (!res.ok) throw new Error(data.error ?? `Failed (${res.status})`);
@@ -111,7 +111,7 @@ export default function Admin() {
             className="underline"
             onClick={async () => {
               await api("/api/auth/logout", { method: "POST" }).catch(() => {});
-              window.location.href = "/login";
+              window.location.replace("/login");
             }}
           >
             sign out

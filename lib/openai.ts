@@ -19,7 +19,7 @@ export function getOpenAIClient() {
   return new OpenAI({
     apiKey: getNvidiaApiKey(),
     baseURL: NVIDIA_BASE_URL,
-    maxRetries: 2,
-    timeout: 60_000,
+    maxRetries: 0,
+    timeout: 120_000,
   });
 }

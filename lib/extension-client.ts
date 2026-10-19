@@ -52,9 +52,9 @@ function request<T>(
 }
 
 export const extension = {
-  async ping(): Promise<{ ok?: boolean } | null> {
+  async ping(): Promise<{ ok?: boolean; version?: string } | null> {
     try {
-      return await request<{ ok?: boolean }>("PING", {}, 1500);
+      return await request<{ ok?: boolean; version?: string }>("PING", {}, 1500);
     } catch {
       return null;
     }
