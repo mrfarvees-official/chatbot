@@ -53,11 +53,14 @@ function request<T>(
 
 export const extension = {
   async ping(): Promise<{ ok?: boolean; version?: string } | null> {
-    try {
-      return await request<{ ok?: boolean; version?: string }>("PING", {}, 1500);
-    } catch {
-      return null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await request<{ ok?: boolean; version?: string }>("PING", {}, 5000);
+      } catch {
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 250));
+      }
     }
+    return null;
   },
   async listTools(): Promise<unknown[]> {
     try {
