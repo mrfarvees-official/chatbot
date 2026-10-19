@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "./llm";
-import { ndjsonEvent, parseMessages, sanitizeTools } from "./chat-handler";
+import { fillProfileTokens, ndjsonEvent, parseMessages, sanitizeTools } from "./chat-handler";
 
 describe("chat validation", () => {
   it("drops leading orphan tool messages and keeps a valid user turn", () => {
@@ -41,6 +41,15 @@ describe("tool sanitization", () => {
     expect(tools.map((tool) => (tool as { function: { name: string } }).function.name)).toEqual(["gmail_compose_draft"]);
   });
 
+  it("unlocks Gmail read/write tools only for an authenticated session", () => {
+    expect(sanitizeTools([valid("gmail_search")])).toEqual([]);
+    expect(
+      sanitizeTools([valid("gmail_search"), valid("gmail_delete_email")], true).map(
+        (tool) => (tool as { function: { name: string } }).function.name,
+      ),
+    ).toEqual(["gmail_search", "gmail_delete_email"]);
+  });
+
   it("drops oversized descriptions", () => {
     expect(sanitizeTools([valid("gmail_compose_draft", "x".repeat(501))])).toEqual([]);
   });
@@ -78,6 +87,15 @@ describe("tool-capable model prompt", () => {
     const prompt = buildSystemPrompt([], true);
     expect(prompt).toContain("call the appropriate email tool");
     expect(prompt).toContain("Never invent email addresses");
+  });
+
+  it("fills authenticated profile placeholders in tool arguments", () => {
+    expect(
+      fillProfileTokens(
+        { body: "Hello {{full_name}}", phone: "{{mobile_number}}" },
+        { full_name: "Ada Lovelace", mobile_number: "+1 555 0100" },
+      ),
+    ).toEqual({ body: "Hello Ada Lovelace", phone: "+1 555 0100" });
   });
 });
 

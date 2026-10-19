@@ -4,7 +4,9 @@ import {
   type ChatMessage,
   type ModelTool,
   type ToolCall,
+  type VisitorProfile,
 } from "./llm";
+import { getSupabaseAuth } from "./supabase-auth";
 import { retrieve } from "./retrieval";
 import { rateLimit } from "./rate-limit";
 
@@ -22,6 +24,18 @@ const DEFAULT_TOOLS = new Set([
   "meet_schedule_meeting",
   "meet_compose_invite_email",
 ]);
+const AUTHENTICATED_GMAIL_TOOLS = new Set([
+  "gmail_search",
+  "gmail_read_email",
+  "gmail_reply_draft",
+  "gmail_forward_draft",
+  "gmail_archive_email",
+  "gmail_delete_email",
+  "gmail_mark_email",
+  "gmail_modify_labels",
+  "gmail_list_attachments",
+  "gmail_open_attachment",
+]);
 
 type ToolCallInput = {
   id: unknown;
@@ -29,15 +43,15 @@ type ToolCallInput = {
   function?: { name?: unknown; arguments?: unknown };
 };
 
-function configuredTools() {
-  const raw = process.env.PUBLIC_TOOL_ALLOWLIST?.split(",")
+function configuredTools(authenticated: boolean) {
+  const raw = (authenticated
+    ? process.env.AUTHENTICATED_TOOL_ALLOWLIST
+    : process.env.PUBLIC_TOOL_ALLOWLIST
+  )?.split(",")
     .map((name) => name.trim())
     .filter(Boolean);
-  return new Set(
-    (raw?.length ? raw : [...DEFAULT_TOOLS]).filter((name) =>
-      DEFAULT_TOOLS.has(name),
-    ),
-  );
+  const allowed = new Set(authenticated ? [...DEFAULT_TOOLS, ...AUTHENTICATED_GMAIL_TOOLS] : DEFAULT_TOOLS);
+  return new Set((raw?.length ? raw : [...allowed]).filter((name) => allowed.has(name)));
 }
 
 function invalid(message: string): Response {
@@ -106,9 +120,9 @@ export function parseMessages(input: unknown): ChatMessage[] | null {
   return last.role === "user" || last.role === "tool" ? out : null;
 }
 
-export function sanitizeTools(input: unknown): ModelTool[] {
+export function sanitizeTools(input: unknown, authenticated = false): ModelTool[] {
   if (!Array.isArray(input)) return [];
-  const allowed = configuredTools();
+  const allowed = configuredTools(authenticated);
   const result: ModelTool[] = [];
   for (const item of input.slice(0, 12)) {
     if (!item || typeof item !== "object") continue;
@@ -153,18 +167,35 @@ function queryFor(messages: ChatMessage[]) {
   return previous ? `${previous}\n${latestUser.content}` : latestUser.content;
 }
 
+export function fillProfileTokens(value: unknown, profile?: VisitorProfile | null): unknown {
+  if (!profile) return value;
+  if (typeof value === "string") {
+    return value.replace(/\{\{\s*(first_name|last_name|full_name|mobile_number)\s*\}\}/g, (_, key) =>
+      String(profile[key as keyof VisitorProfile] ?? ""),
+    );
+  }
+  if (Array.isArray(value)) return value.map((item) => fillProfileTokens(item, profile));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, fillProfileTokens(item, profile)]),
+    );
+  }
+  return value;
+}
+
 function ndjsonStream(
   messages: ChatMessage[],
   sources: Awaited<ReturnType<typeof retrieve>>,
   tools: ModelTool[],
   signal: AbortSignal,
+  profile?: VisitorProfile | null,
 ) {
   const encoder = new TextEncoder();
   return new ReadableStream({
     async start(controller) {
       const write = (value: unknown) => controller.enqueue(encoder.encode(ndjsonEvent(value)));
       try {
-        const stream = await createModelStream(messages, sources, tools, signal);
+        const stream = await createModelStream(messages, sources, tools, signal, profile);
         let content = "";
         const calls = new Map<number, ToolCall>();
         for await (const chunk of stream) {
@@ -188,14 +219,8 @@ function ndjsonStream(
           }
         }
         const toolCalls = [...calls.values()];
-        const assistant = {
-          role: "assistant" as const,
-          content: content || null,
-          ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
-        };
-        write({ type: "assistant_message", message: assistant });
         if (toolCalls.length) {
-          const parsed = [];
+          const parsed: { id: string; name: string; args: unknown }[] = [];
           for (const call of toolCalls) {
             if (!call.id || !NAME.test(call.function.name) || call.function.arguments.length > MAX_ARGUMENT_CHARS) {
               write({ type: "error", message: "The assistant produced an invalid action. Please try again." });
@@ -204,7 +229,11 @@ function ndjsonStream(
               return;
             }
             try {
-              parsed.push({ id: call.id, name: call.function.name, args: JSON.parse(call.function.arguments) });
+              parsed.push({
+                id: call.id,
+                name: call.function.name,
+                args: fillProfileTokens(JSON.parse(call.function.arguments), profile),
+              });
             } catch {
               write({ type: "error", message: "The assistant produced an invalid action. Please try again." });
               write({ type: "done" });
@@ -212,7 +241,21 @@ function ndjsonStream(
               return;
             }
           }
+          const assistant = {
+            role: "assistant" as const,
+            content: content || null,
+            tool_calls: toolCalls.map((call, index) => ({
+              ...call,
+              function: {
+                ...call.function,
+                arguments: JSON.stringify(parsed[index].args),
+              },
+            })),
+          };
+          write({ type: "assistant_message", message: assistant });
           write({ type: "tool_calls", calls: parsed });
+        } else {
+          write({ type: "assistant_message", message: { role: "assistant" as const, content: content || null } });
         }
         write({ type: "done" });
         controller.close();
@@ -238,7 +281,25 @@ export async function handleChat(req: Request) {
   const body = await req.json().catch(() => null);
   const messages = parseMessages(body?.messages);
   if (!messages) return invalid("Invalid messages");
-  const tools = sanitizeTools(body?.tools);
+  let user: { id: string; email?: string; email_confirmed_at?: string | null } | null = null;
+  let profile: VisitorProfile | null = null;
+  try {
+    const supabase = await getSupabaseAuth();
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+    if (user) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, full_name, mobile_number")
+        .eq("id", user.id)
+        .maybeSingle();
+      profile = data as VisitorProfile | null;
+    }
+  } catch (error) {
+    console.error("Chat auth lookup failed:", error);
+  }
+  const authenticated = Boolean(user?.email && user.email_confirmed_at);
+  const tools = sanitizeTools(body?.tools, authenticated);
   if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
     console.debug("[chat] tools", {
       count: tools.length,
@@ -248,7 +309,7 @@ export async function handleChat(req: Request) {
     });
   }
   const sources = await retrieve(queryFor(messages));
-  return new Response(ndjsonStream(messages, sources, tools, req.signal), {
+  return new Response(ndjsonStream(messages, sources, tools, req.signal, profile), {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store",

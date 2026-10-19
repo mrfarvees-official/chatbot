@@ -1,12 +1,12 @@
 # Portfolio chatbot
 
-This project has one public portfolio chatbot at `/`, an admin-only knowledge-base portal at `/admin`, and optional browser actions through the Site Agent Chrome extension.
+This project has one public portfolio chatbot at `/`, an admin-only knowledge-base portal at `/admin`, authenticated visitor profiles at `/account`, and browser actions through the Site Agent Chrome extension.
 
 ## Architecture
 
 - Public chat posts to `/api/chat`. It retrieves relevant public knowledge once, makes one streaming NVIDIA model call, and returns NDJSON events.
-- If the visitor has Site Agent installed, the browser supplies an allowlisted set of draft/compose tools. The browser runs tool rounds and sends tool results back in a new request.
-- Admin magic-link authentication uses Supabase and the `ADMIN_EMAILS` allowlist. Only the admin portal can ingest, replace, delete, or test documents.
+- If the visitor has Site Agent installed, the browser supplies Gmail and draft/compose tools. The server exposes only the safe subset publicly; authenticated sessions unlock the additional Gmail search/read/reply/archive/delete/label tools. The browser runs tool rounds and sends tool results back in a new request.
+- Supabase magic-link authentication is available to visitors. `/account` stores first name, last name, full name, and mobile number for authenticated browser-task fillables. Admin magic-link access still requires the `ADMIN_EMAILS` allowlist.
 - Every ingested document is public to visitors. Do not ingest secrets or personal contact details.
 
 ## Environment
@@ -37,11 +37,12 @@ Copy the names from `.env.example` into the deployment environment. Never commit
 For an existing database:
 
 1. Run `assets/sql/002_remove_visibility.sql` in the Supabase SQL Editor.
-2. Wait a few seconds for PostgREST to reload its schema cache.
-3. Deploy the chatbot code.
-4. Load the extension build if browser tools are enabled.
+2. Run `assets/sql/003_user_profiles.sql` in the Supabase SQL Editor.
+3. Wait a few seconds for PostgREST to reload its schema cache.
+4. Deploy the chatbot code.
+5. Load the extension build.
 
-For a fresh database, run `assets/sql/rag.sql`. It is a destructive reset script intended for a new or intentionally reset project. The 2048-dimensional vector column is intentionally not HNSW-indexed because pgvector limits HNSW indexes to 2000 dimensions.
+For a fresh database, run `assets/sql/rag.sql`. It is a destructive reset script intended for a new or intentionally reset project and includes the authenticated profile table. The 2048-dimensional vector column is intentionally not HNSW-indexed because pgvector limits HNSW indexes to 2000 dimensions.
 
 ## Development
 
@@ -65,10 +66,11 @@ See `chatbot-agent-extension/README.md` for extension build and unpacked-install
 1. Open `/` without the extension and confirm normal streaming chat and the install hint.
 2. Authenticate through `/login`, ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
 3. Confirm unauthenticated `/admin` and `/api/admin/*` requests return 401.
-4. Install/reload the extension and confirm the public page reports it as connected.
+4. Sign in through `/login`, complete `/account`, and confirm the profile values are saved.
+5. Install/reload the extension and confirm the public page reports it as connected.
 5. Ask to email the owner about hiring; confirm a Gmail draft opens addressed to `OWNER_CONTACT_EMAIL` and the assistant asks whether to send.
 6. Confirm sending requires the extension approval popup and denial performs no send.
-7. Confirm read/archive/delete/mailbox tools are not exposed to the public bridge.
+7. Without a session, confirm read/archive/delete/mailbox tools are filtered by the server. With a session, test the authenticated Gmail tools and approval popup.
 
 ## Unverified integrations
 

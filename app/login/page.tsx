@@ -19,11 +19,11 @@ export default function Login() {
 
   return (
     <main className="mx-auto mt-32 max-w-sm space-y-3 p-4">
-      <h1 className="text-xl font-semibold">Admin login</h1>
+      <h1 className="text-xl font-semibold">Sign in</h1>
       {sent ? (
         <p>
-          If that email is allowed, a sign-in link is on its way. Open it in
-          this browser.
+          If the address is valid, a sign-in link is on its way. Open it in
+          this browser to unlock your profile and advanced browser tools.
         </p>
       ) : (
         <>

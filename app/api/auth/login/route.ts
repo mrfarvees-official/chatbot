@@ -1,5 +1,4 @@
 import { getSupabaseAuth } from "@/lib/supabase-auth";
-import { isAllowedEmail } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -10,12 +9,12 @@ export async function POST(req: Request) {
   }
   const { email } = await req.json().catch(() => ({}));
 
-  if (typeof email === "string" && isAllowedEmail(email)) {
+  if (typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     const supabase = await getSupabaseAuth();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        // The email allowlist above is the signup gate for admin accounts.
+        // General users may sign in; admin access remains protected by ADMIN_EMAILS.
         shouldCreateUser: true,
         emailRedirectTo: `${process.env.APP_URL}/api/auth/callback`,
       },

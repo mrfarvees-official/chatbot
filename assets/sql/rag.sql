@@ -17,6 +17,7 @@ drop function if exists public.match_chunks(
 
 drop table if exists public.documents cascade;
 drop table if exists public.chunks cascade;
+drop table if exists public.profiles cascade;
 drop table if exists public.documents_legacy cascade;
 
 create table public.documents (
@@ -39,6 +40,15 @@ create table public.chunks (
   ) stored
 );
 
+create table public.profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  first_name    text,
+  last_name     text,
+  full_name     text,
+  mobile_number text,
+  updated_at    timestamptz not null default now()
+);
+
 create index documents_source_idx on public.documents (source);
 create index chunks_document_idx on public.chunks (document_id);
 create index chunks_fts_idx on public.chunks using gin (fts);
@@ -47,6 +57,38 @@ create index chunks_fts_idx on public.chunks using gin (fts);
 
 alter table public.documents enable row level security;
 alter table public.chunks enable row level security;
+alter table public.profiles enable row level security;
+
+create policy "profiles_select_own"
+  on public.profiles for select to authenticated
+  using (auth.uid() = id);
+
+create policy "profiles_insert_own"
+  on public.profiles for insert to authenticated
+  with check (auth.uid() = id);
+
+create policy "profiles_update_own"
+  on public.profiles for update to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+grant select, insert, update on public.profiles to authenticated;
+
+create or replace function public.create_profile_for_user()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id) values (new.id)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_profile on auth.users;
+create trigger on_auth_user_created_profile
+  after insert on auth.users
+  for each row execute function public.create_profile_for_user();
 
 create or replace function public.match_chunks(
   query_embedding    vector(2048),

@@ -12,11 +12,19 @@ export const isAllowedEmail = (email: string) =>
 
 // Always validates with Supabase (getUser), never trusts the cookie alone.
 export async function requireAdmin() {
+  const user = await requireUser();
+  if (!user?.email || !user.email_confirmed_at || !isAllowedEmail(user.email))
+    return null;
+  return user;
+}
+
+// Validates the Supabase session server-side. The browser must never decide
+// whether advanced tools or private profile fields are available.
+export async function requireUser() {
   const supabase = await getSupabaseAuth();
   const { data } = await supabase.auth.getUser();
   const user = data.user;
-  if (!user?.email || !user.email_confirmed_at || !isAllowedEmail(user.email))
-    return null;
+  if (!user?.email || !user.email_confirmed_at) return null;
   return user;
 }
 

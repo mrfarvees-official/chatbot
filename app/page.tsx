@@ -139,15 +139,18 @@ export default function Home() {
     <main className="mx-auto flex h-dvh max-w-2xl flex-col p-4">
       <div className="mb-3 flex items-center justify-between text-xs text-neutral-500">
         <span>Portfolio assistant</span>
-        {extensionState === "connected" ? (
-          <span className="rounded-full border px-2 py-1">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
-        ) : extensionState === "missing" && installUrl ? (
-          <a className="underline" href={installUrl} target="_blank" rel="noreferrer">Install the Site Agent extension to let me act in your browser</a>
-        ) : extensionState === "missing" ? (
-          <span>Chat only</span>
-        ) : (
-          <span>Checking extension…</span>
-        )}
+        <div className="flex items-center gap-3">
+          {extensionState === "connected" ? (
+            <span className="rounded-full border px-2 py-1">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
+          ) : extensionState === "missing" && installUrl ? (
+            <a className="underline" href={installUrl} target="_blank" rel="noreferrer">Install the Site Agent extension to let me act in your browser</a>
+          ) : extensionState === "missing" ? (
+            <span>Chat only</span>
+          ) : (
+            <span>Checking extension…</span>
+          )}
+          <a className="underline" href="/login">Sign in for advanced Gmail tools</a>
+        </div>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto pb-4">
         {visible.length === 0 && <p className="mt-20 text-center text-neutral-500">Ask me anything.</p>}
