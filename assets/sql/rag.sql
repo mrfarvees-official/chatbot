@@ -118,3 +118,5 @@ grant execute on function public.match_chunks(
 ) to service_role;
 
 commit;
+
+notify pgrst, 'reload schema';

@@ -66,3 +66,6 @@ grant execute on function public.match_chunks(
 ) to service_role;
 
 commit;
+
+-- Refresh PostgREST's function schema cache immediately.
+notify pgrst, 'reload schema';

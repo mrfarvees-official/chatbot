@@ -37,8 +37,9 @@ Copy the names from `.env.example` into the deployment environment. Never commit
 For an existing database:
 
 1. Run `assets/sql/002_remove_visibility.sql` in the Supabase SQL Editor.
-2. Deploy the chatbot code.
-3. Load the extension build if browser tools are enabled.
+2. Wait a few seconds for PostgREST to reload its schema cache.
+3. Deploy the chatbot code.
+4. Load the extension build if browser tools are enabled.
 
 For a fresh database, run `assets/sql/rag.sql`. It is a destructive reset script intended for a new or intentionally reset project. The 2048-dimensional vector column is intentionally not HNSW-indexed because pgvector limits HNSW indexes to 2000 dimensions.
 
