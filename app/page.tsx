@@ -60,9 +60,12 @@ export default function Home() {
     try {
       let completed = false;
       for (let round = 0; round < 6 && !completed; round++) {
-        const tools = extensionState === "connected"
-          ? (await extension.listTools()).filter((tool): tool is Tool => Boolean(tool && typeof tool === "object"))
-          : [];
+        const tools = (await extension.listTools()).filter(
+          (tool): tool is Tool => Boolean(tool && typeof tool === "object"),
+        );
+        if (tools.length && extensionState !== "connected") {
+          setExtensionState("connected");
+        }
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -156,8 +159,8 @@ export default function Home() {
       </div>
       {status && <p className="pb-2 text-sm text-neutral-600">{status}</p>}
       {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2">
-        <input className="flex-1 rounded-xl border px-4 py-2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy} />
+      <div className="flex gap-2 w-2xl">
+        <input className="flex-1 rounded-xl border px-4 py-2 w-1/2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy} />
         {busy ? <button className="rounded-xl border px-4" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40" disabled={!input.trim()} onClick={send}>Send</button>}
       </div>
     </main>

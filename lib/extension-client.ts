@@ -65,8 +65,11 @@ export const extension = {
   async listTools(): Promise<unknown[]> {
     try {
       const r = await request<unknown>("LIST_TOOLS", {}, 5000);
-      return Array.isArray(r) ? r : [];
+      const tools = Array.isArray(r) ? r : [];
+      debug("tools:list", { count: tools.length });
+      return tools;
     } catch {
+      debug("tools:list_failed");
       return [];
     }
   },

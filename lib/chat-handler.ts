@@ -239,6 +239,14 @@ export async function handleChat(req: Request) {
   const messages = parseMessages(body?.messages);
   if (!messages) return invalid("Invalid messages");
   const tools = sanitizeTools(body?.tools);
+  if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
+    console.debug("[chat] tools", {
+      count: tools.length,
+      names: tools.map((tool) =>
+        tool.type === "function" ? tool.function.name : "custom",
+      ),
+    });
+  }
   const sources = await retrieve(queryFor(messages));
   return new Response(ndjsonStream(messages, sources, tools, req.signal), {
     headers: {
