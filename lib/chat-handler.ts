@@ -15,6 +15,7 @@ const MAX_USER_CHARS = 2000;
 const MAX_TOOL_CHARS = 6000;
 const MAX_ARGUMENT_CHARS = 4000;
 const MAX_TOOL_MESSAGES = 12;
+const MAX_MODEL_TOOLS = 64;
 const NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 const DEFAULT_TOOLS = new Set([
   "gmail_compose_draft",
@@ -162,7 +163,7 @@ export function sanitizeTools(input: unknown, authenticated = false): ModelTool[
   if (!Array.isArray(input)) return [];
   const allowed = configuredTools(authenticated);
   const result: ModelTool[] = [];
-  for (const item of input.slice(0, 12)) {
+  for (const item of input.slice(0, MAX_MODEL_TOOLS)) {
     if (!item || typeof item !== "object") continue;
     const t = item as Record<string, unknown>;
     const name = t.name;
