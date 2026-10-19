@@ -20,8 +20,41 @@ function splitLong(p: string, max: number): string[] {
 }
 
 export function chunkText(text: string, max = 900, overlap = 150): string[] {
-  const paras = text
-    .replace(/\r\n/g, "\n")
+  const normalized = text.replace(/\r\n/g, "\n");
+  const hasMarkdownHeading = normalized
+    .split("\n")
+    .some((line) => /^#{1,6}\s+\S/.test(line.trim()));
+
+  if (hasMarkdownHeading) {
+    const sections: { heading: string; body: string }[] = [];
+    let heading = "";
+    let lines: string[] = [];
+    const flush = () => {
+      const body = lines.join("\n").trim();
+      if (body) sections.push({ heading, body });
+      lines = [];
+    };
+    for (const line of normalized.split("\n")) {
+      const trimmed = line.trim();
+      const match = /^(#{1,6})\s+(.+)$/.exec(trimmed);
+      if (match) {
+        flush();
+        heading = trimmed;
+      } else if (trimmed) {
+        lines.push(trimmed);
+      } else {
+        flush();
+      }
+    }
+    flush();
+    return sections.flatMap(({ heading: prefix, body }) => {
+      const context = prefix ? `${prefix}\n\n` : "";
+      const available = Math.max(1, max - context.length);
+      return splitLong(body, available).map((piece) => `${context}${piece}`.trim());
+    });
+  }
+
+  const paras = normalized
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean);

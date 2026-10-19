@@ -21,7 +21,17 @@ export async function retrieve(query: string, topK = 6): Promise<Source[]> {
       rrf_k: 60,
     });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({
+    const minimum = Number(process.env.RAG_MIN_SIMILARITY ?? "0");
+    const rows = (data ?? []).filter(
+      (row) => minimum <= 0 || Number(row.similarity) >= minimum,
+    );
+    if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
+      console.info("[retrieval] results", {
+        count: rows.length,
+        dropped: (data ?? []).length - rows.length,
+      });
+    }
+    return rows.map((row) => ({
       title: row.title,
       source: row.source ?? undefined,
       content: row.content,
