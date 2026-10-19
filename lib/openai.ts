@@ -20,5 +20,6 @@ export function getOpenAIClient() {
     apiKey: getNvidiaApiKey(),
     baseURL: NVIDIA_BASE_URL,
     maxRetries: 2,
+    timeout: 60_000,
   });
 }

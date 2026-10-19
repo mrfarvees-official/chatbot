@@ -2,6 +2,12 @@
 import { useEffect, useState } from "react";
 import { extension } from "@/lib/extension-client";
 
+const DEBUG = process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true";
+
+function debug(event: string, details?: Record<string, unknown>) {
+  if (DEBUG) console.debug(`[agent-ui] ${event}`, details ?? {});
+}
+
 type Msg = {
   role: string;
   content?: string | null;
@@ -17,7 +23,11 @@ export default function AgentPage() {
   const [ext, setExt] = useState<"checking" | "ok" | "missing">("checking");
 
   useEffect(() => {
-    extension.ping().then((r) => setExt(r?.ok ? "ok" : "missing"));
+    debug("ping:start");
+    extension.ping().then((r) => {
+      debug("ping:done", { connected: Boolean(r?.ok) });
+      setExt(r?.ok ? "ok" : "missing");
+    });
   }, []);
 
   async function send() {
@@ -27,17 +37,30 @@ export default function AgentPage() {
     setBusy(true);
     let h: Msg[] = [...history, { role: "user", content: text }];
     setHistory(h);
+    debug("send:start", { historyLength: h.length });
 
     try {
       let finished = false;
       for (let step = 0; step < 8 && !finished; step++) {
         setStatus("Thinking…");
+        debug("loop:start", { step, historyLength: h.length });
         const tools = await extension.listTools(); // changes as tabs open
-        const res = await fetch("/api/admin/agent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: h, tools }),
-        });
+        debug("tools:list", { step, count: tools.length });
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 75_000);
+        let res: Response;
+        try {
+          debug("agent-request:start", { step });
+          res = await fetch("/api/admin/agent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: h, tools }),
+            signal: controller.signal,
+          });
+        } finally {
+          window.clearTimeout(timeout);
+        }
+        debug("agent-request:response", { step, status: res.status });
         if (res.status === 401) {
           location.href = "/login";
           return;
@@ -47,6 +70,11 @@ export default function AgentPage() {
 
         h = [...h, ...data.newMessages];
         setHistory(h);
+        debug("agent-response", {
+          step,
+          type: data.type,
+          calls: Array.isArray(data.calls) ? data.calls.length : 0,
+        });
         if (data.type === "final") {
           finished = true;
           break;
@@ -54,12 +82,20 @@ export default function AgentPage() {
 
         for (const call of data.calls) {
           setStatus(`Running ${call.name}… (watch for an approval popup)`);
+          debug("tool:start", { step, name: call.name, id: call.id });
           const out = await extension
             .callTool(call.name, call.args)
             .catch((e) => ({
               ok: false,
               reason: String(e.message ?? e),
             }));
+          debug("tool:done", {
+            step,
+            name: call.name,
+            id: call.id,
+            ok: out?.ok !== false,
+            reason: out?.ok === false ? out.reason : undefined,
+          });
           h = [
             ...h,
             {
@@ -72,7 +108,9 @@ export default function AgentPage() {
         }
       }
       setStatus(finished ? "" : "Stopped after 8 steps.");
+      debug("send:done", { finished });
     } catch (e) {
+      debug("send:error", { message: e instanceof Error ? e.message : String(e) });
       setStatus(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);

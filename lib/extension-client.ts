@@ -1,6 +1,11 @@
 const FROM_PAGE = "portfolio-chat"; // must match src/bridge.ts
 const FROM_EXT = "portfolio-ext";
+const DEBUG = process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true";
 let seq = 0;
+
+function debug(event: string, details?: Record<string, unknown>) {
+  if (DEBUG) console.debug(`[extension] ${event}`, details ?? {});
+}
 
 function request(
   type: string,
@@ -9,8 +14,15 @@ function request(
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     const id = `${Date.now()}-${++seq}`;
+    const started = performance.now();
+    debug("request:start", { id, type, timeoutMs });
     const timer = setTimeout(() => {
       cleanup();
+      debug("request:timeout", {
+        id,
+        type,
+        elapsedMs: Math.round(performance.now() - started),
+      });
       reject(new Error("extension_timeout"));
     }, timeoutMs);
 
@@ -19,6 +31,11 @@ function request(
       const m = e.data;
       if (!m || m.source !== FROM_EXT || m.id !== id) return;
       cleanup();
+      debug("request:response", {
+        id,
+        type,
+        elapsedMs: Math.round(performance.now() - started),
+      });
       resolve(m.reply);
     }
     function cleanup() {
