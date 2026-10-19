@@ -56,7 +56,7 @@ npm run build
 
 ## Extension flow
 
-The public page works without the extension. With the extension installed, the page displays its connection status and requests tools only when needed. The first request from a trusted site opens a connection-consent popup. The extension console can revoke connected origins. Irreversible actions open a separate approval popup; Gmail and calendar/Meet draft tools open drafts but do not silently send or save them.
+The public page works without the extension. With the extension installed, trusted public origins can use the site allowlist immediately during this demo phase. Irreversible actions still open a separate approval popup; Gmail and calendar/Meet draft tools open drafts but do not silently send or save them. Origin authentication can be added later without changing the tool protocol.
 
 See `chatbot-agent-extension/README.md` for extension build and unpacked-install instructions.
 
@@ -65,7 +65,7 @@ See `chatbot-agent-extension/README.md` for extension build and unpacked-install
 1. Open `/` without the extension and confirm normal streaming chat and the install hint.
 2. Authenticate through `/login`, ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
 3. Confirm unauthenticated `/admin` and `/api/admin/*` requests return 401.
-4. Install the extension and confirm the first public tool request shows site connection consent.
+4. Install/reload the extension and confirm the public page reports it as connected.
 5. Ask to email the owner about hiring; confirm a Gmail draft opens addressed to `OWNER_CONTACT_EMAIL` and the assistant asks whether to send.
 6. Confirm sending requires the extension approval popup and denial performs no send.
 7. Confirm read/archive/delete/mailbox tools are not exposed to the public bridge.
