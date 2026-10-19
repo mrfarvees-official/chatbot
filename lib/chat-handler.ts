@@ -44,7 +44,7 @@ function invalid(message: string): Response {
   return Response.json({ error: message }, { status: 400 });
 }
 
-function parseMessages(input: unknown): ChatMessage[] | null {
+export function parseMessages(input: unknown): ChatMessage[] | null {
   if (!Array.isArray(input)) return null;
   const source = input.slice(-MAX_MESSAGES);
   const out: ChatMessage[] = [];
@@ -106,7 +106,7 @@ function parseMessages(input: unknown): ChatMessage[] | null {
   return last.role === "user" || last.role === "tool" ? out : null;
 }
 
-function sanitizeTools(input: unknown): ModelTool[] {
+export function sanitizeTools(input: unknown): ModelTool[] {
   if (!Array.isArray(input)) return [];
   const allowed = configuredTools();
   const result: ModelTool[] = [];
@@ -140,7 +140,7 @@ function sanitizeTools(input: unknown): ModelTool[] {
   return result;
 }
 
-function event(value: unknown) {
+export function ndjsonEvent(value: unknown) {
   return `${JSON.stringify(value)}\n`;
 }
 
@@ -162,7 +162,7 @@ function ndjsonStream(
   const encoder = new TextEncoder();
   return new ReadableStream({
     async start(controller) {
-      const write = (value: unknown) => controller.enqueue(encoder.encode(event(value)));
+      const write = (value: unknown) => controller.enqueue(encoder.encode(ndjsonEvent(value)));
       try {
         const stream = await createModelStream(messages, sources, tools, signal);
         let content = "";
