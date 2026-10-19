@@ -18,6 +18,7 @@ sqlite.exec(`
     password_hash text,
     provider text not null default 'local',
     email_verified integer not null default 1,
+    is_admin integer not null default 0,
     created_at text not null
   );
   create table if not exists sessions (
@@ -49,6 +50,7 @@ sqlite.exec(`
   );
   create index if not exists chunks_document_id_idx on chunks(document_id);
 `);
+try { sqlite.exec("alter table users add column is_admin integer not null default 0"); } catch { /* existing database already has the column */ }
 
 export const db = drizzle(sqlite);
 export { sqlite, sql };

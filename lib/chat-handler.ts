@@ -27,6 +27,14 @@ const DEFAULT_TOOLS = new Set([
   "meet_compose_invite_email",
 ]);
 const AUTHENTICATED_GMAIL_TOOLS = new Set([
+  "calendar_search_events",
+  "calendar_list_events",
+  "calendar_read_event",
+  "calendar_update_event",
+  "calendar_delete_event",
+  "calendar_rsvp",
+  "calendar_add_guests",
+  "calendar_open_availability",
   "gmail_search",
   "gmail_read_email",
   "gmail_reply_draft",
@@ -55,6 +63,7 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
 ]);
 const AUTHENTICATED_MEET_TOOLS = new Set([
   "meet_join_meeting",
+  "meet_start_meeting",
   "meet_toggle_mic",
   "meet_toggle_camera",
   "meet_share_screen",

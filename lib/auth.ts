@@ -5,7 +5,7 @@ export { isAllowedEmail };
 
 export async function requireAdmin() {
   const user = await requireUser();
-  return user && isAllowedEmail(user.email) ? user : null;
+  return user && (user.isAdmin || isAllowedEmail(user.email)) ? user : null;
 }
 
 export async function requireUser() {

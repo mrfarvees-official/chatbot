@@ -10,7 +10,7 @@ export async function GET() {
   return Response.json({
     authenticated: true,
     email: user.email,
-    isAdmin: Boolean(user.email && isAllowedEmail(user.email)),
+    isAdmin: user.isAdmin || Boolean(user.email && isAllowedEmail(user.email)),
     profile: data,
   });
 }

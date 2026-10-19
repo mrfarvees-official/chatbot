@@ -7,7 +7,7 @@ import { db } from "./local-db";
 const COOKIE = "chatbot_session";
 const SESSION_DAYS = 30;
 
-export type LocalUser = { id: string; email: string; email_confirmed_at: string };
+export type LocalUser = { id: string; email: string; email_confirmed_at: string; isAdmin: boolean };
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -48,25 +48,25 @@ export async function clearSession() {
 export async function getLocalUser(): Promise<LocalUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
-  const row = db.get<{ id: string; email: string; expires_at: number }>(sql`
-    select u.id, u.email, s.expires_at from sessions s join users u on u.id = s.user_id
+  const row = db.get<{ id: string; email: string; expires_at: number; is_admin: number }>(sql`
+    select u.id, u.email, u.is_admin, s.expires_at from sessions s join users u on u.id = s.user_id
     where s.token_hash = ${hashToken(token)}
   `);
   if (!row || row.expires_at < Date.now()) return null;
-  return { id: row.id, email: row.email, email_confirmed_at: new Date().toISOString() };
+  return { id: row.id, email: row.email, email_confirmed_at: new Date().toISOString(), isAdmin: Boolean(row.is_admin) };
 }
 
 export function isAllowedEmail(email: string) {
   return (process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean).includes(normalizeEmail(email));
 }
 
-export function upsertUser(input: { email: string; provider: string; passwordHash?: string | null }) {
+export function upsertUser(input: { email: string; provider: string; passwordHash?: string | null; isAdmin?: boolean }) {
   const email = normalizeEmail(input.email);
   const existing = db.get<{ id: string }>(sql`select id from users where email = ${email}`);
   const id = existing?.id ?? randomUUID();
   db.run(existing
-    ? sql`update users set provider = ${input.provider}, password_hash = coalesce(${input.passwordHash ?? null}, password_hash), email_verified = 1 where id = ${id}`
-    : sql`insert into users (id, email, password_hash, provider, email_verified, created_at) values (${id}, ${email}, ${input.passwordHash ?? null}, ${input.provider}, 1, ${new Date().toISOString()})`);
+    ? sql`update users set provider = ${input.provider}, password_hash = coalesce(${input.passwordHash ?? null}, password_hash), email_verified = 1, is_admin = case when ${input.isAdmin ? 1 : 0} = 1 then 1 else is_admin end where id = ${id}`
+    : sql`insert into users (id, email, password_hash, provider, email_verified, is_admin, created_at) values (${id}, ${email}, ${input.passwordHash ?? null}, ${input.provider}, 1, ${input.isAdmin ? 1 : 0}, ${new Date().toISOString()})`);
   db.run(sql`insert or ignore into profiles (user_id, updated_at) values (${id}, ${new Date().toISOString()})`);
   return { id, email };
 }
