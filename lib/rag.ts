@@ -1,34 +1,31 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
+import {
+  getOpenAIClient,
+  getNvidiaApiKey,
+  NVIDIA_BASE_URL,
+  NVIDIA_CHAT_MODEL,
+  NVIDIA_EMBEDDING_MODEL,
+} from "./openai";
 
-const DIMENSIONS = 768; // must match vector(768) in your table
+const DIMENSIONS = 2048; // must match vector(2048) in your table
 
 function getClients() {
-  const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Prefer a server-only secret when one is configured, while supporting the
-  // publishable key used by the current local setup.
-  const supabaseKey =
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY;
   const missing = [
-    !geminiKey && "NEXT_PUBLIC_GEMINI_API_KEY",
-    !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
-    !supabaseKey &&
-      "SUPABASE_SECRET_KEY (or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)",
+    !supabaseUrl && "SUPABASE_URL",
+    !supabaseKey && "SUPABASE_PUBLISHABLE_KEY",
   ].filter(Boolean);
 
   if (missing.length > 0) {
     throw new Error(`Missing environment variable(s): ${missing.join(", ")}`);
   }
-
-  if (!geminiKey || !supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseKey) {
     throw new Error("Required environment variables are not configured");
   }
 
   return {
-    ai: new GoogleGenAI({ apiKey: geminiKey }),
+    ai: getOpenAIClient(),
     supabase: createClient(supabaseUrl, supabaseKey),
   };
 }
@@ -41,16 +38,34 @@ export function chunkText(text: string, size = 1000, overlap = 200): string[] {
   return chunks;
 }
 
-async function embed(texts: string[], taskType: string): Promise<number[][]> {
-  const { ai } = getClients();
+async function embed(texts: string[], inputType: "passage" | "query") {
   const out: number[][] = [];
+
   for (let i = 0; i < texts.length; i += 100) {
-    const res = await ai.models.embedContent({
-      model: "gemini-embedding-001",
-      contents: texts.slice(i, i + 100),
-      config: { taskType, outputDimensionality: DIMENSIONS },
+    const response = await fetch(`${NVIDIA_BASE_URL}/embeddings`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getNvidiaApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: NVIDIA_EMBEDDING_MODEL,
+        input: texts.slice(i, i + 100),
+        input_type: inputType,
+        modality: "text",
+        dimensions: DIMENSIONS,
+        encoding_format: "float",
+      }),
     });
-    out.push(...res.embeddings!.map((e) => e.values!));
+    if (!response.ok) {
+      throw new Error(`Embedding request failed (${response.status}): ${await response.text()}`);
+    }
+    const res = (await response.json()) as {
+      data: Array<{ index: number; embedding: number[] }>;
+    };
+    out.push(
+      ...res.data.sort((a, b) => a.index - b.index).map((embedding) => embedding.embedding),
+    );
   }
   return out;
 }
@@ -58,19 +73,11 @@ async function embed(texts: string[], taskType: string): Promise<number[][]> {
 export async function ingest(text: string, source: string) {
   const { supabase } = getClients();
   const chunks = chunkText(text);
-  const embeddings = await embed(chunks, "RETRIEVAL_DOCUMENT");
+  const embeddings = await embed(chunks, "passage");
+  const rows = chunks.map((content, i) => ({ content, source, embedding: embeddings[i] }));
 
-  const rows = chunks.map((content, i) => ({
-    content,
-    source,
-    embedding: embeddings[i],
-  }));
-
-  // insert in batches to stay under request size limits
   for (let i = 0; i < rows.length; i += 100) {
-    const { error } = await supabase
-      .from("documents")
-      .insert(rows.slice(i, i + 100));
+    const { error } = await supabase.from("documents").insert(rows.slice(i, i + 100));
     if (error) throw new Error(`Insert failed: ${error.message}`);
   }
   return rows.length;
@@ -78,8 +85,7 @@ export async function ingest(text: string, source: string) {
 
 export async function answer(question: string, topK = 4) {
   const { ai, supabase } = getClients();
-  const [qEmb] = await embed([question], "RETRIEVAL_QUERY");
-
+  const [qEmb] = await embed([question], "query");
   const { data, error } = await supabase.rpc("match_documents", {
     query_embedding: qEmb,
     match_count: topK,
@@ -90,9 +96,10 @@ export async function answer(question: string, topK = 4) {
   }
 
   const context = data
-    .map((c: any, i: number) => `[${i + 1}] (${c.source})\n${c.content}`)
+    .map((c: { source: string; content: string }, i: number) =>
+      `[${i + 1}] (${c.source})\n${c.content}`,
+    )
     .join("\n\n");
-
   const prompt = `Answer the question using only the context below. Cite sources like [1].
 If the answer isn't in the context, say you don't know.
 
@@ -100,10 +107,13 @@ Context:
 ${context}
 
 Question: ${question}`;
-
-  const res = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
+  const res = await ai.chat.completions.create({
+    model: NVIDIA_CHAT_MODEL,
+    messages: [{ role: "user", content: prompt }],
   });
-  return { answer: res.text, sources: data.map((c: any) => c.source) };
+
+  return {
+    answer: res.choices[0]?.message?.content ?? "",
+    sources: data.map((c: { source: string }) => c.source),
+  };
 }
