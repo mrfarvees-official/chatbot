@@ -2,7 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 
 export const NVIDIA_BASE_URL =
-  process.env.NVIDIA_BASE_URL ?? "https://integrate.api.nvidia.com/v1";
+  (process.env.NVIDIA_BASE_URL ?? "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
 export const NVIDIA_CHAT_MODEL =
   process.env.NVIDIA_MODEL ?? "openai/gpt-oss-20b";
 export const NVIDIA_EMBEDDING_MODEL =
