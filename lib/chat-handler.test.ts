@@ -50,6 +50,15 @@ describe("tool sanitization", () => {
     ).toEqual(["gmail_search", "gmail_delete_email"]);
   });
 
+  it("unlocks Google Meet tools for an authenticated session", () => {
+    expect(sanitizeTools([valid("meet_join_meeting")])).toEqual([]);
+    expect(
+      sanitizeTools([valid("meet_join_meeting"), valid("meet_send_chat")], true).map(
+        (tool) => (tool as { function: { name: string } }).function.name,
+      ),
+    ).toEqual(["meet_join_meeting", "meet_send_chat"]);
+  });
+
   it("drops oversized descriptions", () => {
     expect(sanitizeTools([valid("gmail_compose_draft", "x".repeat(501))])).toEqual([]);
   });
@@ -86,6 +95,7 @@ describe("tool-capable model prompt", () => {
   it("requires explicit email requests to use an available browser tool", () => {
     const prompt = buildSystemPrompt([], true);
     expect(prompt).toContain("call the appropriate email tool");
+    expect(prompt).toContain("call the matching Meet tool");
     expect(prompt).toContain("Never invent email addresses");
   });
 

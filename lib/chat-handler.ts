@@ -51,6 +51,23 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
   "meet_send_reaction",
   "meet_get_summary",
 ]);
+const AUTHENTICATED_MEET_TOOLS = new Set([
+  "meet_join_meeting",
+  "meet_toggle_mic",
+  "meet_toggle_camera",
+  "meet_share_screen",
+  "meet_leave_call",
+  "meet_list_participants",
+  "meet_manage_participant",
+  "meet_read_chat",
+  "meet_send_chat",
+  "meet_toggle_captions",
+  "meet_read_captions",
+  "meet_toggle_recording",
+  "meet_raise_hand",
+  "meet_send_reaction",
+  "meet_get_summary",
+]);
 
 type ToolCallInput = {
   id: unknown;
@@ -66,7 +83,13 @@ function configuredTools(authenticated: boolean) {
     .map((name) => name.trim())
     .filter(Boolean);
   const allowed = new Set(authenticated ? [...DEFAULT_TOOLS, ...AUTHENTICATED_GMAIL_TOOLS] : DEFAULT_TOOLS);
-  return new Set((raw?.length ? raw : [...allowed]).filter((name) => allowed.has(name)));
+  const selected = raw?.length ? new Set(raw) : allowed;
+  // Keep the Meet catalog available to authenticated users even when an older
+  // AUTHENTICATED_TOOL_ALLOWLIST only lists the original Gmail tools.
+  if (authenticated) {
+    for (const name of AUTHENTICATED_MEET_TOOLS) selected.add(name);
+  }
+  return new Set([...selected].filter((name) => allowed.has(name) || AUTHENTICATED_MEET_TOOLS.has(name)));
 }
 
 function invalid(message: string): Response {
