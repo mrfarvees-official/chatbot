@@ -60,7 +60,7 @@ See `chatbot-agent-extension/README.md` for extension build and unpacked-install
 
 ## Manual test plan
 
-1. Open `/login` and create or sign in to a local email/password account.
+1. Run the local admin seed command, then sign in at `/login`.
 2. Open `/` and confirm unauthenticated users cannot submit chat requests.
 3. Ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
 3. Confirm unauthenticated `/admin` and `/api/admin/*` requests return 401.
