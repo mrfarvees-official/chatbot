@@ -35,6 +35,7 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
   "calendar_rsvp",
   "calendar_add_guests",
   "calendar_open_availability",
+  "gmail_find_meeting_links",
   "gmail_search",
   "gmail_read_email",
   "gmail_reply_draft",
@@ -46,6 +47,7 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
   "gmail_list_attachments",
   "gmail_open_attachment",
   "meet_join_meeting",
+  "meet_join_link",
   "meet_toggle_mic",
   "meet_toggle_camera",
   "meet_share_screen",
@@ -63,6 +65,7 @@ const AUTHENTICATED_GMAIL_TOOLS = new Set([
 ]);
 const AUTHENTICATED_MEET_TOOLS = new Set([
   "meet_join_meeting",
+  "meet_join_link",
   "meet_start_meeting",
   "meet_toggle_mic",
   "meet_toggle_camera",

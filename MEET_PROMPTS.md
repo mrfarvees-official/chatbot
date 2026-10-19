@@ -8,6 +8,9 @@ outward-facing actions show an approval popup.
 
 - Start a new Google Meet meeting now.
 - Join the current Google Meet.
+- Check today's Gmail for Google Meet invitations and show the meeting links.
+- Open the Meet link from today's Gmail invitations and join it.
+- Check Gmail for meeting links on [YYYY/MM/DD].
 - Schedule a business meeting titled [TITLE] from [START_ISO] to [END_ISO].
 - Schedule a weekly meeting titled [TITLE] on Mondays from [START_ISO] to [END_ISO].
 - Schedule [TITLE] with guests [EMAILS] and details [DETAILS].
