@@ -1,7 +1,6 @@
-import { getSupabaseAuth } from "@/lib/supabase-auth";
+import { clearSession } from "@/lib/local-auth";
 
 export async function POST() {
-  const supabase = await getSupabaseAuth();
-  await supabase.auth.signOut();
+  await clearSession();
   return Response.json({ ok: true });
 }

@@ -10,8 +10,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.118.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.4",
     "next": "16.4.0",
     "openai": "^7.39.0",
     "react": "19.3.0",
@@ -19,9 +19,11 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",

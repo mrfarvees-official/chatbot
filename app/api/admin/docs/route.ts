@@ -1,14 +1,11 @@
 import { requireAdmin, unauthorized } from "@/lib/auth";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { db, sql } from "@/lib/local-db";
 
 export async function GET() {
   if (!(await requireAdmin())) return unauthorized();
-  const { data, error } = await getSupabaseAdmin()
-    .from("documents")
-    .select("id, title, source, updated_at, chunks(count)")
-    .order("updated_at", { ascending: false });
-  if (error) return Response.json({ error: "Failed to load" }, { status: 500 });
-  return Response.json({ docs: data });
+  const rows = db.all(sql`select d.id, d.title, d.source, d.updated_at, count(c.id) as chunk_count from documents d left join chunks c on c.document_id = d.id group by d.id order by d.updated_at desc`) as Array<Record<string, unknown>>;
+  const docs = rows.map((doc) => ({ ...doc, chunks: [{ count: Number(doc.chunk_count) }] }));
+  return Response.json({ docs });
 }
 
 export async function DELETE(req: Request) {
@@ -16,10 +13,6 @@ export async function DELETE(req: Request) {
   const { id } = await req.json().catch(() => ({}));
   if (typeof id !== "string")
     return Response.json({ error: "Invalid input" }, { status: 400 });
-  const { error } = await getSupabaseAdmin()
-    .from("documents")
-    .delete()
-    .eq("id", id); // chunks cascade
-  if (error) return Response.json({ error: "Delete failed" }, { status: 500 });
+  db.run(sql`delete from documents where id = ${id}`);
   return Response.json({ ok: true });
 }

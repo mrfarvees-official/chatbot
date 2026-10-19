@@ -6,7 +6,7 @@ This project has one public portfolio chatbot at `/`, an admin-only knowledge-ba
 
 - Public chat posts to `/api/chat`. It retrieves relevant public knowledge once, makes one streaming NVIDIA model call, and returns NDJSON events.
 - If the visitor has Site Agent installed, the browser supplies Gmail and draft/compose tools. The server exposes only the safe subset publicly; authenticated sessions unlock the additional Gmail search/read/reply/archive/delete/label tools. The browser runs tool rounds and sends tool results back in a new request.
-- Supabase magic-link authentication is available to visitors. `/account` stores first name, last name, full name, and mobile number for authenticated browser-task fillables. Admin magic-link access still requires the `ADMIN_EMAILS` allowlist.
+- Authentication uses direct Google OAuth or a local email/password account. Sessions, profiles, documents, chunks, and embeddings are stored in the local SQLite database through Drizzle. Admin access requires the `ADMIN_EMAILS` allowlist.
 - Every ingested document is public to visitors. Do not ingest secrets or personal contact details.
 
 ## Environment
@@ -15,13 +15,13 @@ Copy the names from `.env.example` into the deployment environment. Never commit
 
 | Variable | Purpose |
 | --- | --- |
-| `APP_URL` | Public application URL and Supabase redirect base |
+| `APP_URL` | Public application URL and OAuth redirect base |
 | `OWNER_NAME` | Owner name used by the public assistant |
 | `OWNER_CONTACT_EMAIL` | Contact address used when context lacks an answer |
-| `ADMIN_EMAILS` | Comma-separated admin magic-link allowlist |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase browser/auth key |
-| `SUPABASE_SECRET_KEY` | Server-only Supabase secret key |
+| `ADMIN_EMAILS` | Comma-separated Google/local email admin allowlist |
+| `GOOGLE_CLIENT_ID` | Google OAuth web client ID |
+| `GOOGLE_CLIENT_SECRET` | Server-only Google OAuth client secret |
+| `LOCAL_DB_PATH` | SQLite database path, default `.data/chatbot.sqlite` |
 | `NVIDIA_API_KEY` | NVIDIA API key |
 | `NVIDIA_BASE_URL` | NVIDIA OpenAI-compatible endpoint |
 | `NVIDIA_MODEL` | Chat model |
@@ -32,17 +32,19 @@ Copy the names from `.env.example` into the deployment environment. Never commit
 | `NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING` | Optional browser/agent pipeline logging flag |
 | `RAG_MIN_SIMILARITY` | Optional minimum retrieval similarity; `0` disables filtering |
 
-## Database deployment order
+## Local database
 
-For an existing database:
+The server creates `.data/chatbot.sqlite` automatically on first start. Drizzle
+uses SQLite for users, sessions, profiles, documents, chunks, and embeddings.
+Back up that file when deploying. Set `LOCAL_DB_PATH` to an absolute persistent
+path in production. The old files in `assets/sql/` are legacy Supabase scripts
+and are not used by the application.
 
-1. Run `assets/sql/002_remove_visibility.sql` in the Supabase SQL Editor.
-2. Run `assets/sql/003_user_profiles.sql` in the Supabase SQL Editor.
-3. Wait a few seconds for PostgREST to reload its schema cache.
-4. Deploy the chatbot code.
-5. Load the extension build.
-
-For a fresh database, run `assets/sql/rag.sql`. It is a destructive reset script intended for a new or intentionally reset project and includes the authenticated profile table. The 2048-dimensional vector column is intentionally not HNSW-indexed because pgvector limits HNSW indexes to 2000 dimensions.
+For Google sign-in, create a Web OAuth client in Google Cloud and set
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Register
+`http://localhost:3000/api/auth/callback` and the production equivalent as
+authorized redirect URIs. Local email/password accounts are stored in SQLite;
+passwords are salted and hashed with Node's built-in `scrypt`.
 
 ## Development
 
@@ -63,8 +65,9 @@ See `chatbot-agent-extension/README.md` for extension build and unpacked-install
 
 ## Manual test plan
 
-1. Open `/` without the extension and confirm normal streaming chat and the install hint.
-2. Authenticate through `/login`, ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
+1. Open `/login` and sign in with Google or create a local email/password account.
+2. Open `/` and confirm unauthenticated users cannot submit chat requests.
+3. Ingest a Markdown document, replace it using the same source, test retrieval, and delete it from `/admin`.
 3. Confirm unauthenticated `/admin` and `/api/admin/*` requests return 401.
 4. Sign in through `/login`, complete `/account`, and confirm the profile values are saved.
 5. Install/reload the extension and confirm the public page reports it as connected.

@@ -1,16 +1,11 @@
 import { isAllowedEmail, requireUser } from "@/lib/auth";
-import { getSupabaseAuth } from "@/lib/supabase-auth";
+import { db, sql } from "@/lib/local-db";
 
 export async function GET() {
   const user = await requireUser();
   if (!user) return Response.json({ authenticated: false }, { status: 401 });
 
-  const supabase = await getSupabaseAuth();
-  const { data } = await supabase
-    .from("profiles")
-    .select("first_name, last_name, full_name, mobile_number")
-    .eq("id", user.id)
-    .maybeSingle();
+  const data = db.get(sql`select first_name, last_name, full_name, mobile_number from profiles where user_id = ${user.id}`);
 
   return Response.json({
     authenticated: true,

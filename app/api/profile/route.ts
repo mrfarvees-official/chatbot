@@ -1,5 +1,5 @@
 import { requireUser, unauthorized } from "@/lib/auth";
-import { getSupabaseAuth } from "@/lib/supabase-auth";
+import { db, sql } from "@/lib/local-db";
 
 const fields = ["first_name", "last_name", "mobile_number"] as const;
 type ProfileField = (typeof fields)[number];
@@ -12,13 +12,7 @@ function clean(value: unknown) {
 export async function GET() {
   const user = await requireUser();
   if (!user) return unauthorized();
-  const supabase = await getSupabaseAuth();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("first_name, last_name, full_name, mobile_number, updated_at")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  const data = db.get(sql`select first_name, last_name, full_name, mobile_number, updated_at from profiles where user_id = ${user.id}`);
   return Response.json({
     email: user.email,
     profile: data ?? { first_name: null, last_name: null, full_name: null, mobile_number: null },
@@ -44,12 +38,7 @@ export async function PATCH(req: Request) {
     .filter((value): value is string => Boolean(value))
     .join(" ") || null;
 
-  const supabase = await getSupabaseAuth();
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert({ id: user.id, ...values, full_name: fullName, updated_at: new Date().toISOString() })
-    .select("first_name, last_name, full_name, mobile_number, updated_at")
-    .single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  db.run(sql`update profiles set first_name = ${values.first_name ?? null}, last_name = ${values.last_name ?? null}, full_name = ${fullName}, mobile_number = ${values.mobile_number ?? null}, updated_at = ${new Date().toISOString()} where user_id = ${user.id}`);
+  const data = db.get(sql`select first_name, last_name, full_name, mobile_number, updated_at from profiles where user_id = ${user.id}`);
   return Response.json({ profile: data });
 }

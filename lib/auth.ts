@@ -1,31 +1,15 @@
 import "server-only";
-import { getSupabaseAuth } from "./supabase-auth";
+import { getLocalUser, isAllowedEmail } from "./local-auth";
 
-const allowlist = () =>
-  (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
+export { isAllowedEmail };
 
-export const isAllowedEmail = (email: string) =>
-  allowlist().includes(email.trim().toLowerCase());
-
-// Always validates with Supabase (getUser), never trusts the cookie alone.
 export async function requireAdmin() {
   const user = await requireUser();
-  if (!user?.email || !user.email_confirmed_at || !isAllowedEmail(user.email))
-    return null;
-  return user;
+  return user && isAllowedEmail(user.email) ? user : null;
 }
 
-// Validates the Supabase session server-side. The browser must never decide
-// whether advanced tools or private profile fields are available.
 export async function requireUser() {
-  const supabase = await getSupabaseAuth();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  if (!user?.email || !user.email_confirmed_at) return null;
-  return user;
+  return getLocalUser();
 }
 
 export const unauthorized = () =>

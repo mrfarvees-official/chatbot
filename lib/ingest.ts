@@ -1,25 +1,21 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { getSupabaseAdmin } from "./supabase-admin";
 import { chunkText } from "./chunk";
 import { embed } from "./embeddings";
+import { db, sqlite, sql } from "./local-db";
+import { randomUUID } from "node:crypto";
 
 export async function ingestDocument(input: {
   title: string;
   source: string;
   text: string;
 }) {
-  const db = getSupabaseAdmin();
   const text = input.text.trim();
   const hash = createHash("sha256").update(text).digest("hex");
 
   // Same source already ingested?
-  const { data: existing, error: findErr } = await db
-    .from("documents")
-    .select("id, content_hash")
-    .eq("source", input.source);
-  if (findErr) throw new Error(findErr.message);
-  if (existing?.some((d) => d.content_hash === hash)) {
+  const existing = db.get<{ id: string; content_hash: string }>(sql`select id, content_hash from documents where source = ${input.source}`);
+  if (existing?.content_hash === hash) {
     return { status: "unchanged" as const };
   }
 
@@ -31,37 +27,19 @@ export async function ingestDocument(input: {
     "passage",
   );
 
-  if (existing?.length) {
-    const { error } = await db
-      .from("documents")
-      .delete()
-      .eq("source", input.source);
-    if (error) throw new Error(error.message);
-  }
-
-  const { data: doc, error: docErr } = await db
-    .from("documents")
-    .insert({
-      title: input.title,
-      source: input.source,
-      content_hash: hash,
-    })
-    .select("id")
-    .single();
-  if (docErr) throw new Error(docErr.message);
+  db.run(sql`delete from documents where source = ${input.source}`);
+  const id = randomUUID();
+  db.run(sql`insert into documents (id, title, source, content_hash, updated_at) values (${id}, ${input.title}, ${input.source}, ${hash}, ${new Date().toISOString()})`);
 
   const rows = chunks.map((content, i) => ({
-    document_id: doc.id,
+    document_id: id,
     chunk_index: i,
     content,
     embedding: vectors[i],
   }));
-  for (let i = 0; i < rows.length; i += 100) {
-    const { error } = await db.from("chunks").insert(rows.slice(i, i + 100));
-    if (error) {
-      await db.from("documents").delete().eq("id", doc.id); // cascade removes chunks
-      throw new Error(error.message);
-    }
-  }
+  const insert = sqlite.transaction((items: typeof rows) => {
+    for (const row of items) sqlite.prepare("insert into chunks (document_id, chunk_index, content, embedding) values (?, ?, ?, ?)").run(row.document_id, row.chunk_index, row.content, JSON.stringify(row.embedding));
+  });
+  insert(rows);
   return { status: "ingested" as const, chunks: rows.length };
 }

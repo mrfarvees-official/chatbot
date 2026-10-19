@@ -6,7 +6,8 @@ import {
   type ToolCall,
   type VisitorProfile,
 } from "./llm";
-import { getSupabaseAuth } from "./supabase-auth";
+import { getLocalUser } from "./local-auth";
+import { db, sql } from "./local-db";
 import { retrieve } from "./retrieval";
 import { rateLimit } from "./rate-limit";
 
@@ -323,16 +324,9 @@ export async function handleChat(req: Request) {
   let user: { id: string; email?: string; email_confirmed_at?: string | null } | null = null;
   let profile: VisitorProfile | null = null;
   try {
-    const supabase = await getSupabaseAuth();
-    const result = await supabase.auth.getUser();
-    user = result.data.user;
+    user = await getLocalUser();
     if (user) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, full_name, mobile_number")
-        .eq("id", user.id)
-        .maybeSingle();
-      profile = data as VisitorProfile | null;
+      profile = db.get(sql`select first_name, last_name, full_name, mobile_number from profiles where user_id = ${user.id}`) as VisitorProfile | null;
     }
   } catch (error) {
     console.error("Chat auth lookup failed:", error);
