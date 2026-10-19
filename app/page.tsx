@@ -185,11 +185,16 @@ export default function Home() {
         {streaming && <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl bg-neutral-200 px-4 py-2 text-neutral-900">{streaming}</div>}
         <div ref={bottomRef} />
       </div>
+      {auth.status === "signed_out" && (
+        <p className="pb-2 text-sm text-neutral-600">
+          Sign in with Google to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
+        </p>
+      )}
       {status && <p className="pb-2 text-sm text-neutral-600">{status}</p>}
       {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
       <div className="flex gap-2 w-2xl">
-        <input className="flex-1 rounded-xl border px-4 py-2 w-1/2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy} />
-        {busy ? <button className="rounded-xl border px-4" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40" disabled={!input.trim()} onClick={send}>Send</button>}
+        <input className="flex-1 rounded-xl border px-4 py-2 w-1/2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
+        {busy ? <button className="rounded-xl border px-4" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={send}>Send</button>}
       </div>
     </main>
   );

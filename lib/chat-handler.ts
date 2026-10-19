@@ -338,6 +338,7 @@ export async function handleChat(req: Request) {
     console.error("Chat auth lookup failed:", error);
   }
   const authenticated = Boolean(user?.email && user.email_confirmed_at);
+  if (!authenticated) return Response.json({ error: "Authentication required" }, { status: 401 });
   const tools = sanitizeTools(body?.tools, authenticated);
   if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
     console.debug("[chat] tools", {
