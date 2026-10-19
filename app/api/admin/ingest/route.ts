@@ -5,18 +5,17 @@ export async function POST(req: Request) {
   if (!(await requireAdmin())) return unauthorized();
 
   try {
-    const { title, source, text, visibility } = await req.json();
+    const { title, source, text } = await req.json();
     if (
       typeof title !== "string" ||
       !title.trim() ||
       typeof text !== "string" ||
       !text.trim() ||
-      text.length > 200_000 ||
-      (visibility !== "public" && visibility !== "private")
+      text.length > 200_000
     ) {
       return Response.json(
         {
-          error: "title, text and visibility ('public'|'private') are required",
+          error: "title and text are required",
         },
         { status: 400 },
       );
@@ -27,7 +26,6 @@ export async function POST(req: Request) {
         typeof source === "string" && source.trim()
           ? source.trim()
           : title.trim(),
-      visibility,
       text,
     });
     return Response.json(result);

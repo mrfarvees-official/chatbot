@@ -1,5 +1,7 @@
 -- DESTRUCTIVE: reset and recreate the RAG schema.
 -- This deletes all documents and chunks in the current Supabase project.
+-- Run assets/sql/002_remove_visibility.sql before deploying the new code
+-- when upgrading an existing database.
 
 begin;
 
@@ -21,8 +23,6 @@ create table public.documents (
   id            uuid primary key default gen_random_uuid(),
   title         text not null,
   source        text,
-  visibility    text not null default 'private'
-                check (visibility in ('public', 'private')),
   content_hash  text not null unique,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
@@ -51,7 +51,6 @@ alter table public.chunks enable row level security;
 create or replace function public.match_chunks(
   query_embedding    vector(2048),
   query_text         text,
-  allowed_visibility text[],
   match_count        int default 6,
   candidate_count    int default 20,
   rrf_k              int default 60
@@ -74,7 +73,6 @@ as $$
            ) as rnk
     from public.chunks c
     join public.documents d on d.id = c.document_id
-    where d.visibility = any (allowed_visibility)
     order by c.embedding <=> query_embedding
     limit candidate_count
   ),
@@ -86,8 +84,7 @@ as $$
     from public.chunks c
     join public.documents d on d.id = c.document_id,
          websearch_to_tsquery('english', query_text) q
-    where d.visibility = any (allowed_visibility)
-      and c.fts @@ q
+    where c.fts @@ q
     order by ts_rank_cd(c.fts, q) desc
     limit candidate_count
   ),
@@ -113,11 +110,11 @@ as $$
 $$;
 
 revoke all on function public.match_chunks(
-  vector(2048), text, text[], int, int, int
+  vector(2048), text, int, int, int
 ) from public, anon, authenticated;
 
 grant execute on function public.match_chunks(
-  vector(2048), text, text[], int, int, int
+  vector(2048), text, int, int, int
 ) to service_role;
 
 commit;

@@ -7,11 +7,11 @@ function debug(event: string, details?: Record<string, unknown>) {
   if (DEBUG) console.debug(`[extension] ${event}`, details ?? {});
 }
 
-function request(
+function request<T>(
   type: string,
   extra: object = {},
   timeoutMs = 90_000,
-): Promise<any> {
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const id = `${Date.now()}-${++seq}`;
     const started = performance.now();
@@ -52,22 +52,22 @@ function request(
 }
 
 export const extension = {
-  async ping() {
+  async ping(): Promise<{ ok?: boolean } | null> {
     try {
-      return await request("PING", {}, 1500);
+      return await request<{ ok?: boolean }>("PING", {}, 1500);
     } catch {
       return null;
     }
   },
-  async listTools(): Promise<any[]> {
+  async listTools(): Promise<unknown[]> {
     try {
-      const r = await request("LIST_TOOLS", {}, 5000);
+      const r = await request<unknown>("LIST_TOOLS", {}, 5000);
       return Array.isArray(r) ? r : [];
     } catch {
       return [];
     }
   },
   // 90s: an approval popup can wait up to 60s
-  callTool: (name: string, args: unknown) =>
-    request("CALL_TOOL", { name, args }),
+  callTool: (name: string, args: unknown): Promise<unknown> =>
+    request<unknown>("CALL_TOOL", { name, args }),
 };

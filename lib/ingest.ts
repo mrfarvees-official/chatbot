@@ -4,19 +4,14 @@ import { getSupabaseAdmin } from "./supabase-admin";
 import { chunkText } from "./chunk";
 import { embed } from "./embeddings";
 
-export type Visibility = "public" | "private";
-
 export async function ingestDocument(input: {
   title: string;
   source: string;
-  visibility: Visibility;
   text: string;
 }) {
   const db = getSupabaseAdmin();
   const text = input.text.trim();
-  const hash = createHash("sha256")
-    .update(`${input.visibility}\n${text}`)
-    .digest("hex");
+  const hash = createHash("sha256").update(text).digest("hex");
 
   // Same source already ingested?
   const { data: existing, error: findErr } = await db
@@ -49,7 +44,6 @@ export async function ingestDocument(input: {
     .insert({
       title: input.title,
       source: input.source,
-      visibility: input.visibility,
       content_hash: hash,
     })
     .select("id")

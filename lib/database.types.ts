@@ -1,5 +1,3 @@
-export type Visibility = "public" | "private";
-
 export type Database = {
   public: {
     Tables: {
@@ -8,7 +6,6 @@ export type Database = {
           id: string;
           title: string;
           source: string | null;
-          visibility: Visibility;
           content_hash: string;
           created_at: string;
           updated_at: string;
@@ -17,7 +14,6 @@ export type Database = {
           id?: string;
           title: string;
           source?: string | null;
-          visibility?: Visibility;
           content_hash: string;
           created_at?: string;
           updated_at?: string;
@@ -26,7 +22,6 @@ export type Database = {
           id?: string;
           title?: string;
           source?: string | null;
-          visibility?: Visibility;
           content_hash?: string;
           created_at?: string;
           updated_at?: string;
@@ -62,8 +57,27 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: { visibility: Visibility };
+    Functions: {
+      match_chunks: {
+        Args: {
+          query_embedding: string;
+          query_text: string;
+          match_count?: number;
+          candidate_count?: number;
+          rrf_k?: number;
+        };
+        Returns: {
+          chunk_id: number;
+          document_id: string;
+          title: string;
+          source: string | null;
+          content: string;
+          similarity: number;
+          score: number;
+        }[];
+      };
+    };
+    Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
 };

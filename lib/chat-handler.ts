@@ -1,6 +1,6 @@
 import "server-only";
 import { streamReply, type ChatMessage } from "./llm";
-import { retrieve, type Scope } from "./retrieval";
+import { retrieve } from "./retrieval";
 import { rateLimit } from "./rate-limit";
 
 const MAX_MESSAGES = 10;
@@ -22,10 +22,10 @@ function parseMessages(input: unknown): ChatMessage[] | null {
   return out[out.length - 1].role === "user" ? out : null;
 }
 
-export async function handleChat(req: Request, scope: Scope) {
+export async function handleChat(req: Request) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "local";
-  if (!rateLimit(`chat:${scope}:${ip}`, scope === "admin" ? 60 : 15)) {
+  if (!rateLimit(`chat:${ip}`, 15)) {
     return Response.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -34,8 +34,7 @@ export async function handleChat(req: Request, scope: Scope) {
   if (!messages)
     return Response.json({ error: "Invalid messages" }, { status: 400 });
 
-  // scope comes from the calling route, never from the request body
-  const sources = await retrieve(messages[messages.length - 1].content, scope);
+  const sources = await retrieve(messages[messages.length - 1].content);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
