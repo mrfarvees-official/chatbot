@@ -28,7 +28,7 @@ function formatMessageTime(value?: string) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
 
-function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" | "theme" }) {
+function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" | "theme" | "lock" }) {
   const paths = {
     copy: <><rect x="8" y="8" width="10" height="10" rx="1" /><path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
     edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
@@ -37,6 +37,7 @@ function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "se
     send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
     stop: <rect x="5" y="5" width="14" height="14" rx="2" />,
     theme: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></>,
+    lock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
   }[kind];
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">{paths}</svg>;
 }
@@ -412,8 +413,18 @@ export default function Home() {
       </aside>
       <section className="chatbot-panel flex min-w-0 flex-1 flex-col">
       <div className="chatbot-header flex min-h-16 items-center justify-between border-b px-5 py-3 text-xs sm:px-8">
-        <button className={`chatbot-private-toggle rounded-lg border px-3 py-2 transition ${privateMode ? "chatbot-private-active" : ""}`} aria-pressed={privateMode} onClick={togglePrivateMode} disabled={busy}>{privateMode ? "Private mode · On" : "Private mode"}</button>
+        <span />
         <div className="flex items-center gap-3">
+          <button
+            className={`chatbot-private-toggle chatbot-icon-button rounded-lg border p-2 transition ${privateMode ? "chatbot-private-active" : ""}`}
+            title={privateMode ? "Private mode is on" : "Enable private mode"}
+            aria-label={privateMode ? "Disable private mode" : "Enable private mode"}
+            aria-pressed={privateMode}
+            onClick={togglePrivateMode}
+            disabled={busy}
+          >
+            <ActionIcon kind="lock" />
+          </button>
           <button
             className="chatbot-surface chatbot-icon-button rounded-lg border p-2 text-[var(--chatbot-text-soft)]"
             title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
