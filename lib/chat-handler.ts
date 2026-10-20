@@ -372,6 +372,19 @@ function ndjsonStream(
           }
         }
         const toolCalls = [...calls.values()];
+        if (!toolCalls.length && preferred && ["calendar_search_events", "gmail_search"].includes(preferred)) {
+          toolCalls.push({
+            id: `fallback-${Date.now()}`,
+            type: "function",
+            function: {
+              name: preferred,
+              arguments: JSON.stringify({ query: queryFor(messages) }),
+            },
+          });
+          if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
+            console.debug("[chat] fallback tool call", { name: preferred });
+          }
+        }
         if (toolCalls.length) {
           const parsed: { id: string; name: string; args: unknown }[] = [];
           for (const call of toolCalls) {
