@@ -11,15 +11,21 @@ type ToolCall = {
 };
 
 type Msg =
-  | { role: "user"; content: string }
-  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
-  | { role: "tool"; tool_call_id: string; content: string };
+  | { role: "user"; content: string; createdAt?: string }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[]; createdAt?: string }
+  | { role: "tool"; tool_call_id: string; content: string; createdAt?: string };
 
 type Tool = { name: string; description: string; inputSchema: object };
 type ToolCallResult = { id: string; name: string; args: unknown };
 type ChatSession = { id: string; title: string; updatedAt: string; messageCount: number };
 
 const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
+
+function formatMessageTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
 
 function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" }) {
   const paths = {
@@ -123,7 +129,7 @@ export default function Home() {
     setBusy(true);
     const controller = new AbortController();
     abortRef.current = controller;
-    let working: Msg[] = [...messages, { role: "user", content: text }];
+    let working: Msg[] = [...messages, { role: "user", content: text, createdAt: new Date().toISOString() }];
     setMessages(working);
 
     try {
@@ -175,7 +181,7 @@ export default function Home() {
             const event = JSON.parse(line) as Record<string, unknown>;
             if (event.type === "text") setStreaming((current) => current + String(event.delta ?? ""));
             if (event.type === "assistant_message") {
-              const message = event.message as Msg;
+              const message = { ...(event.message as Msg), createdAt: new Date().toISOString() };
               working = [...working, message];
               setMessages(working);
               setStreaming("");
@@ -350,9 +356,12 @@ export default function Home() {
         {visible.map((message, index) => (
           <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[85%]`}>
             <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
-            <div className={`mt-1 flex gap-2 text-[11px] text-[#777783] opacity-0 transition group-hover:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-              <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
-              {message.role === "user" && <><button title="Edit message" aria-label="Edit message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => editMessage(message.content)}><ActionIcon kind="edit" /></button><button title="Resend message" aria-label="Resend message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => send(message.content)}><ActionIcon kind="resend" /></button></>}
+            <div className={`mt-1 flex items-center gap-2 text-[11px] text-[#777783] ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              {message.createdAt && <time className="mr-1" dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>}
+              <span className="flex gap-1 opacity-0 transition group-hover:opacity-100">
+                <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
+                {message.role === "user" && <><button title="Edit message" aria-label="Edit message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => editMessage(message.content)}><ActionIcon kind="edit" /></button><button title="Resend message" aria-label="Resend message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => send(message.content)}><ActionIcon kind="resend" /></button></>}
+              </span>
             </div>
           </div>
         ))}
