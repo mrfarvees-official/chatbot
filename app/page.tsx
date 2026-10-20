@@ -20,7 +20,7 @@ type ToolCallResult = { id: string; name: string; args: unknown };
 type ChatSession = { id: string; title: string; updatedAt: string; messageCount: number };
 type Profile = { first_name?: string | null; last_name?: string | null; mobile_number?: string | null };
 
-const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
+const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL || "/extension";
 
 function formatMessageTime(value?: string) {
   if (!value) return "";
@@ -401,6 +401,7 @@ export default function Home() {
         <div className="chatbot-header mt-4 space-y-3 border-t pt-4 text-xs">
           <div>
             <p className="chatbot-subtle mb-2 uppercase tracking-[0.16em]">Browser access</p>
+            <a className="mb-2 block underline underline-offset-4" href="/extension">Download &amp; installation guide</a>
             {extensionState === "connected" ? (
               <span className="chatbot-surface inline-flex rounded-full border px-2.5 py-1 text-[var(--chatbot-text-soft)]">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
             ) : extensionState === "missing" && installUrl ? (

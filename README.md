@@ -54,6 +54,16 @@ npm run build
 
 ## Extension flow
 
+Download the packaged extension from `/downloads/site-agent.zip`. The public `/extension` page provides step-by-step installation instructions for Chrome, Edge, and Opera GX, and is linked from the chat sidebar under Browser access. Extract the ZIP and use Developer mode > Load unpacked to select the folder containing `manifest.json`. Refresh Chatbot after installation.
+
+To rebuild the downloadable ZIP from the sibling `chatbot-agent-extension` repository on Windows, run from the chatbot repository:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-extension.ps1
+```
+
+The script builds the extension and packages only its runtime files into `public/downloads/site-agent.zip`, with `manifest.json` at the archive root. It also generates `public/downloads/site-agent.json` containing the version, file size, and SHA-256 used by the installation page. Commit both generated files and deploy them with the chatbot. Repackage before deploying a new extension release; users update their extracted folder, reload the extension, and refresh the chat and Google tabs.
+
 The public page works without the extension. With the extension installed, trusted public origins can use the site allowlist immediately during this demo phase. Irreversible actions still open a separate approval popup; Gmail and calendar/Meet draft tools open drafts but do not silently send or save them. Origin authentication can be added later without changing the tool protocol.
 
 See `chatbot-agent-extension/README.md` for extension build and unpacked-install instructions.
