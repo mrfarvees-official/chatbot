@@ -18,6 +18,7 @@ const MAX_TOOL_CHARS = 6000;
 const MAX_ARGUMENT_CHARS = 4000;
 const MAX_TOOL_MESSAGES = 12;
 const MAX_MODEL_TOOLS = 64;
+const NVIDIA_DEBUG_LOGGING = process.env.NVIDIA_DEBUG_LOGGING === "true";
 const NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 const DEFAULT_TOOLS = new Set([
   "gmail_compose_draft",
@@ -341,6 +342,7 @@ function ndjsonStream(
       const write = (value: unknown) => controller.enqueue(encoder.encode(ndjsonEvent(value)));
       try {
         const preferred = preferredToolForQuery(tools, messages);
+        const modelStarted = performance.now();
         const stream = await createModelStream(
           messages,
           sources,
@@ -350,10 +352,16 @@ function ndjsonStream(
           preferred ? { type: "function", function: { name: preferred } } : "auto",
         );
         let content = "";
+        let firstChunkMs: number | null = null;
+        let chunkCount = 0;
+        let finishReason: string | null = null;
         const calls = new Map<number, ToolCall>();
         for await (const chunk of stream) {
+          chunkCount++;
+          firstChunkMs ??= Math.round(performance.now() - modelStarted);
           const choice = chunk.choices[0];
           const delta = choice?.delta;
+          finishReason = choice?.finish_reason ?? finishReason;
           if (delta?.content) {
             content += delta.content;
             write({ type: "text", delta: delta.content });
@@ -384,6 +392,18 @@ function ndjsonStream(
           if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
             console.debug("[chat] fallback tool call", { name: preferred });
           }
+        }
+        if (NVIDIA_DEBUG_LOGGING) {
+          console.info("[nvidia] response", {
+            elapsedMs: Math.round(performance.now() - modelStarted),
+            firstChunkMs,
+            chunkCount,
+            finishReason,
+            contentChars: content.length,
+            toolCallCount: toolCalls.length,
+            toolNames: toolCalls.map((call) => call.function.name),
+            toolArgumentChars: toolCalls.map((call) => call.function.arguments.length),
+          });
         }
         if (toolCalls.length) {
           const parsed: { id: string; name: string; args: unknown }[] = [];

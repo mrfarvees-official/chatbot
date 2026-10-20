@@ -34,6 +34,7 @@ export type VisitorProfile = {
 };
 
 const ownerName = process.env.OWNER_NAME || "the site owner";
+const NVIDIA_DEBUG_LOGGING = process.env.NVIDIA_DEBUG_LOGGING === "true";
 const ownerEmail = process.env.OWNER_CONTACT_EMAIL || "the owner’s contact email";
 
 export function buildSystemPrompt(
@@ -70,10 +71,11 @@ export async function createModelStream(
   profile?: VisitorProfile | null,
   toolChoice: OpenAI.Chat.ChatCompletionToolChoiceOption = "auto",
 ) {
+  const systemPrompt = buildSystemPrompt(sources, tools.length > 0, profile);
   const body = {
     model: NVIDIA_CHAT_MODEL,
     messages: [
-      { role: "system", content: buildSystemPrompt(sources, tools.length > 0, profile) },
+      { role: "system", content: systemPrompt },
       ...toModelMessages(messages),
     ],
     ...(tools.length ? { tools, tool_choice: toolChoice } : {}),
@@ -82,5 +84,29 @@ export async function createModelStream(
       ? { reasoning_effort: process.env.NVIDIA_REASONING_EFFORT }
       : {}),
   } as OpenAI.Chat.ChatCompletionCreateParamsStreaming;
-  return getOpenAIClient().chat.completions.create(body, { signal });
+  if (NVIDIA_DEBUG_LOGGING) {
+    console.info("[nvidia] request", {
+      model: NVIDIA_CHAT_MODEL,
+      messageCount: messages.length,
+      toolCount: tools.length,
+      toolNames: tools.map((tool) => tool.type === "function" ? tool.function.name : "custom"),
+      systemPromptChars: systemPrompt.length,
+      messageChars: messages.reduce((total, message) => total + JSON.stringify(message).length, 0),
+      toolSchemaChars: JSON.stringify(tools).length,
+      toolChoice: typeof toolChoice === "string" ? toolChoice : JSON.stringify(toolChoice),
+      reasoningEffort: /gpt-oss/i.test(NVIDIA_CHAT_MODEL) ? process.env.NVIDIA_REASONING_EFFORT ?? null : null,
+    });
+  }
+  const started = performance.now();
+  try {
+    return await getOpenAIClient().chat.completions.create(body, { signal });
+  } catch (error) {
+    if (NVIDIA_DEBUG_LOGGING) {
+      console.error("[nvidia] request_failed", {
+        elapsedMs: Math.round(performance.now() - started),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    throw error;
+  }
 }
