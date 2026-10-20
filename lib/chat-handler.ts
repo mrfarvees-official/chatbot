@@ -217,7 +217,41 @@ export function sanitizeTools(input: unknown, authenticated = false): ModelTool[
   return result;
 }
 
+function gmailFollowUpTool(messages: ChatMessage[]): string | null {
+  const last = messages.at(-1);
+  if (last?.role !== "user") return null;
+  const instruction = last.content.trim().toLowerCase();
+  // Retrieval may combine turns, but an action must follow the newest instruction.
+  if (/\b(?:do not|don't|dont|never|stop|cancel)\b/.test(instruction)) return null;
+  if (/^(?:please\s+)?(?:send|save|keep)(?:\s+(?:it|this|that|the email))?\s+as\s+(?:a\s+)?draft[.!?]*$/.test(instruction)) {
+    return "gmail_compose_draft";
+  }
+  const sendExisting = /^(?:please\s+)?send(?:\s+(?:it|this|that|the (?:email|draft)|(?:the )?current draft))?(?:\s+(?:now|please))?[.!?]*$/.test(instruction);
+  if (!sendExisting) return null;
+  // Only interpret a bare "send" as Gmail when the conversation has a successful
+  // draft outcome. The extension independently requires approval before sending.
+  const draftCalls = new Set<string>();
+  for (const message of messages.slice(0, -1)) {
+    if (message.role === "assistant") {
+      for (const call of message.tool_calls ?? []) {
+        if (["gmail_compose_draft", "gmail_reply_draft", "gmail_forward_draft"].includes(call.function.name)) {
+          draftCalls.add(call.id);
+        }
+      }
+    }
+    if (message.role === "tool" && draftCalls.has(message.tool_call_id)) {
+      try {
+        const result = JSON.parse(message.content);
+        if (result?.ok === true) return "gmail_send_current_draft";
+      } catch { /* An invalid result does not establish a draft. */ }
+    }
+  }
+  return null;
+}
+
 export function selectToolsForQuery(tools: ModelTool[], messages: ChatMessage[]): ModelTool[] {
+  const followUp = gmailFollowUpTool(messages);
+  if (followUp) return tools.filter((tool) => tool.type === "function" && tool.function.name === followUp);
   const query = queryFor(messages).toLowerCase();
   const wantsGmail = /\b(gmail|email|e-mail|mail|inbox|message|attachment|draft|recipient|sender)\b/.test(query);
   const wantsCalendar = /\b(calendar|schedule|scheduling|availability|event|appointment|invite|booking|book|meeting)\b/.test(query);
@@ -271,9 +305,13 @@ export function selectToolsForQuery(tools: ModelTool[], messages: ChatMessage[])
 export function preferredToolForQuery(tools: ModelTool[], messages: ChatMessage[]): string | null {
   const last = messages.at(-1);
   if (!last || last.role !== "user") return null;
-  const query = queryFor(messages).toLowerCase();
+  const query = last.content.toLowerCase();
   const available = new Set(tools.map((tool) => tool.type === "function" ? tool.function.name : ""));
   const choose = (name: string) => available.has(name) ? name : null;
+  const followUp = gmailFollowUpTool(messages);
+  if (followUp) return choose(followUp);
+  // A negative instruction must not inherit a forced action from an older turn.
+  if (/\b(?:do not|don't|dont|never|stop|cancel)\b/.test(last.content.toLowerCase())) return null;
   if (/\b(calendar|schedule|availability|event|appointment|meeting)\b/.test(query) &&
       /\b(check|find|show|list|search|today|tomorrow|upcoming|meeting|event|read)\b/.test(query)) {
     return choose("calendar_search_events");

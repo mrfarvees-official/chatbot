@@ -123,6 +123,38 @@ describe("tool sanitization", () => {
     expect(selectToolsForQuery(tools, [{ role: "user", content: "What technologies are in the portfolio?" }])).toEqual([]);
   });
 
+  it("routes send after send-as-draft to sending, without opening another draft", () => {
+    const tools = sanitizeTools([valid("gmail_compose_draft"), valid("gmail_send_current_draft"), valid("calendar_search_events")], true);
+    const draftHistory = parseHistoryMessages([
+      { role: "user", content: "Check my calendar for meetings today" },
+      { role: "assistant", content: "Calendar checked" },
+      { role: "user", content: "send as draft" },
+      { role: "assistant", content: null, tool_calls: [{ id: "draft-1", type: "function", function: { name: "gmail_compose_draft", arguments: "{}" } }] },
+      { role: "tool", tool_call_id: "draft-1", content: '{"ok":true,"note":"Draft opened, NOT sent"}' },
+      { role: "assistant", content: "Draft opened, NOT sent" },
+    ])!;
+    for (const instruction of ["send", "send it", "please send the draft now"]) {
+      const messages = parseMessages([...draftHistory, { role: "user", content: instruction }])!;
+      const selected = selectToolsForQuery(tools, messages);
+      expect(selected).toHaveLength(1);
+      expect(selected[0]).toMatchObject({ function: { name: "gmail_send_current_draft" } });
+      expect(preferredToolForQuery(selected, messages)).toBe("gmail_send_current_draft");
+    }
+    expect(preferredToolForQuery(tools, parseMessages([...draftHistory, { role: "user", content: "send as draft" }])!)).toBe("gmail_compose_draft");
+    expect(preferredToolForQuery(tools, parseMessages([...draftHistory, { role: "user", content: "don't send" }])!)).toBeNull();
+  });
+
+  it("does not force an older draft request when no successful draft outcome exists", () => {
+    const tools = sanitizeTools([valid("gmail_compose_draft"), valid("gmail_send_current_draft")], true);
+    const messages = parseMessages([
+      { role: "user", content: "send as draft" },
+      { role: "assistant", content: "Could not create draft" },
+      { role: "user", content: "send" },
+    ])!;
+    expect(preferredToolForQuery(tools, messages)).toBeNull();
+    expect(preferredToolForQuery(tools, [{ role: "user", content: "send" }])).toBeNull();
+  });
+
   it("preserves the Gmail draft schema sent to the model", () => {
     const [tool] = sanitizeTools([
       {
