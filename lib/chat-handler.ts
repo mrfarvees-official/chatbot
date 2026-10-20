@@ -172,6 +172,15 @@ export function parseMessages(input: unknown): ChatMessage[] | null {
   return last.role === "user" || last.role === "tool" ? out : null;
 }
 
+export function parseHistoryMessages(input: unknown): ChatMessage[] | null {
+  if (!Array.isArray(input)) return null;
+  const validated = parseMessages([
+    ...input,
+    { role: "user", content: "__history_validation__" },
+  ]);
+  return validated ? validated.slice(0, -1) : null;
+}
+
 export function sanitizeTools(input: unknown, authenticated = false): ModelTool[] {
   if (!Array.isArray(input)) return [];
   const allowed = configuredTools(authenticated);

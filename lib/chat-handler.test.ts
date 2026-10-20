@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "./llm";
-import { fillProfileTokens, ndjsonEvent, parseMessages, sanitizeTools } from "./chat-handler";
+import { fillProfileTokens, ndjsonEvent, parseHistoryMessages, parseMessages, sanitizeTools } from "./chat-handler";
 
 describe("chat validation", () => {
+  it("accepts a saved conversation ending with an assistant message", () => {
+    expect(parseHistoryMessages([
+      { role: "user", content: "Hello" },
+      { role: "assistant", content: "Hi there" },
+    ])).toEqual([
+      { role: "user", content: "Hello" },
+      { role: "assistant", content: "Hi there" },
+    ]);
+  });
+
   it("drops leading orphan tool messages and keeps a valid user turn", () => {
     const messages = parseMessages([
       { role: "tool", tool_call_id: "orphan", content: "ignored" },

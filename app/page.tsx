@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { extension } from "@/lib/extension-client";
 
 type ToolCall = {
@@ -16,6 +16,7 @@ type Msg =
 
 type Tool = { name: string; description: string; inputSchema: object };
 type ToolCallResult = { id: string; name: string; args: unknown };
+type ChatSession = { id: string; title: string; updatedAt: string; messageCount: number };
 
 const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
 
@@ -29,6 +30,9 @@ export default function Home() {
   const [extensionVersion, setExtensionVersion] = useState("");
   const [auth, setAuth] = useState<{ status: "checking" | "signed_in" | "signed_out"; email?: string }>({ status: "checking" });
   const [streaming, setStreaming] = useState("");
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +44,26 @@ export default function Home() {
       } else setExtensionState("missing");
     });
   }, []);
+
+  useEffect(() => {
+    if (auth.status !== "signed_in") return;
+    fetch("/api/chat/sessions")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Could not load chat history");
+        return res.json() as Promise<{ sessions: ChatSession[] }>;
+      })
+      .then(async (data) => {
+        setSessions(data.sessions ?? []);
+        const latest = data.sessions?.[0];
+        if (!latest) return;
+        const res = await fetch(`/api/chat/sessions/${latest.id}`);
+        const loaded = await res.json();
+        if (!res.ok) throw new Error(loaded.error ?? "Could not load chat session");
+        setSessionId(latest.id);
+        setMessages(loaded.messages ?? []);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Could not load chat history"));
+  }, [auth.status]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -66,7 +90,21 @@ export default function Home() {
     setMessages(working);
 
     try {
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        const created = await fetch("/api/chat/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: text.slice(0, 80) }),
+        });
+        const data = await created.json();
+        if (!created.ok) throw new Error(data.error ?? "Could not create chat session");
+        activeSessionId = data.session.id as string;
+        setSessionId(activeSessionId);
+        setSessions((current) => [data.session, ...current]);
+      }
       let completed = false;
+      await saveHistory(activeSessionId, working);
       for (let round = 0; round < 6 && !completed; round++) {
         const tools = (await extension.listTools()).filter(
           (tool): tool is Tool => Boolean(tool && typeof tool === "object"),
@@ -111,6 +149,7 @@ export default function Home() {
           if (done) break;
         }
         if (!calls.length) {
+          await saveHistory(activeSessionId, working);
           completed = true;
           break;
         }
@@ -125,6 +164,7 @@ export default function Home() {
           working = [...working, toolMessage];
           setMessages(working);
         }
+        await saveHistory(activeSessionId, working);
         setStatus("");
       }
       if (!completed) setStatus("Stopped after 6 rounds.");
@@ -139,15 +179,83 @@ export default function Home() {
     }
   }
 
+  async function saveHistory(id: string | null, history: Msg[]) {
+    if (!id) return;
+    const res = await fetch(`/api/chat/sessions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history }),
+    });
+    if (!res.ok) throw new Error("Could not save chat history");
+    setSessions((current) => current.map((session) => session.id === id
+      ? { ...session, messageCount: history.length, updatedAt: new Date().toISOString() }
+      : session));
+  }
+
+  async function startNewChat() {
+    if (busy) return;
+    setSessionId(null);
+    setMessages([]);
+    setStreaming("");
+    setError("");
+    setStatus("");
+  }
+
+  async function openChat(session: ChatSession) {
+    if (busy || session.id === sessionId) return;
+    setHistoryLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/chat/sessions/${session.id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not load chat session");
+      setSessionId(session.id);
+      setMessages(data.messages ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load chat session");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function removeChat(event: MouseEvent, session: ChatSession) {
+    event.stopPropagation();
+    if (busy || !window.confirm("Delete this chat session?")) return;
+    const res = await fetch(`/api/chat/sessions/${session.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setError("Could not delete chat session");
+      return;
+    }
+    setSessions((current) => current.filter((item) => item.id !== session.id));
+    if (session.id === sessionId) startNewChat();
+  }
+
   const visible = messages.filter((message) =>
     (message.role === "user" || message.role === "assistant") && message.content,
   );
 
   return (
-    <main className="mx-auto flex h-dvh max-w-2xl flex-col p-4">
+    <main className="mx-auto flex h-dvh max-w-5xl gap-4 p-4">
+      <aside className="hidden w-64 shrink-0 flex-col border-r pr-3 md:flex">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-semibold">Your chats</span>
+          <button className="rounded-lg border px-2 py-1 text-xs" onClick={startNewChat} disabled={busy}>New chat</button>
+        </div>
+        <div className="space-y-1 overflow-y-auto">
+          {sessions.length === 0 && <p className="text-xs text-neutral-500">No saved chats yet.</p>}
+          {sessions.map((session) => (
+            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${session.id === sessionId ? "bg-neutral-200" : "hover:bg-neutral-100"}`} onClick={() => openChat(session)} disabled={historyLoading}>
+              <span className="min-w-0 flex-1 truncate">{session.title}</span>
+              <span className="hidden text-xs text-neutral-500 group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
+            </button>
+          ))}
+        </div>
+      </aside>
+      <section className="mx-auto flex min-w-0 max-w-2xl flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between text-xs text-neutral-500">
         <span>Portfolio assistant</span>
         <div className="flex items-center gap-3">
+          <button className="rounded-lg border px-2 py-1 text-xs md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
           {extensionState === "connected" ? (
             <span className="rounded-full border px-2 py-1">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
           ) : extensionState === "missing" && installUrl ? (
@@ -196,6 +304,7 @@ export default function Home() {
         <input className="flex-1 rounded-xl border px-4 py-2 w-1/2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
         {busy ? <button className="rounded-xl border px-4" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={send}>Send</button>}
       </div>
+      </section>
     </main>
   );
 }

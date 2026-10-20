@@ -48,7 +48,24 @@ sqlite.exec(`
     content text not null,
     embedding text not null
   );
+  create table if not exists chat_sessions (
+    id text primary key not null,
+    user_id text not null references users(id) on delete cascade,
+    title text not null,
+    created_at text not null,
+    updated_at text not null
+  );
+  create table if not exists chat_messages (
+    id integer primary key autoincrement,
+    session_id text not null references chat_sessions(id) on delete cascade,
+    position integer not null,
+    message_json text not null,
+    created_at text not null,
+    unique(session_id, position)
+  );
   create index if not exists chunks_document_id_idx on chunks(document_id);
+  create index if not exists chat_sessions_user_updated_idx on chat_sessions(user_id, updated_at desc);
+  create index if not exists chat_messages_session_position_idx on chat_messages(session_id, position);
 `);
 try { sqlite.exec("alter table users add column is_admin integer not null default 0"); } catch { /* existing database already has the column */ }
 
