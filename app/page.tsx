@@ -21,14 +21,26 @@ type ChatSession = { id: string; title: string; updatedAt: string; messageCount:
 
 const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
 
-function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" }) {
+function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" }) {
   const paths = {
     copy: <><rect x="8" y="8" width="10" height="10" rx="1" /><path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
     edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
     resend: <><path d="M3 12a9 9 0 0 1 15.2-6.5L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.2 6.5L3 16" /><path d="M3 21v-5h5" /></>,
     check: <path d="m5 12 4 4L19 6" />,
+    send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
+    stop: <rect x="5" y="5" width="14" height="14" rx="2" />,
   }[kind];
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">{paths}</svg>;
+}
+
+function WorkIndicator({ busy, status, streaming }: { busy: boolean; status: string; streaming: string }) {
+  if (!busy) return null;
+  const label = status || (streaming ? "Writing response" : "Thinking");
+  return <div className="flex items-center gap-2 py-2 text-xs text-[#858591]" aria-live="polite">
+    <span className="chatbot-work-orb flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]/20"><span className="h-2 w-2 rounded-full bg-[#60a5fa]" /></span>
+    <span>{label}</span>
+    <span className="flex items-end gap-0.5" aria-hidden="true"><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /></span>
+  </div>;
 }
 
 export default function Home() {
@@ -330,6 +342,7 @@ export default function Home() {
           </div>
         ))}
         {streaming && <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"><MarkdownViewer content={streaming} /></div>}
+        <WorkIndicator busy={busy} status={status} streaming={streaming} />
         <div ref={bottomRef} />
         </div>
       </div>
@@ -338,12 +351,12 @@ export default function Home() {
           Sign in with a local email account to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
         </p>
       )}
-      {status && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">{status}</p>}
+      {status && !busy && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">{status}</p>}
       {error && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#f87171] sm:px-8">{error}</p>}
       <div className="border-t border-[#25252d] bg-[#0d0d10] px-5 py-4 sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border border-[#30303a] bg-[#141419] p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
         <input ref={inputRef} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-[#f4f4f5] outline-none placeholder:text-[#6f6f7b]" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
-        {busy ? <button className="rounded-xl border border-[#343440] px-4 text-sm text-[#d8d8df] hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-[#2563eb] px-4 text-sm font-medium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}>Send</button>}
+        {busy ? <button title="Stop response" aria-label="Stop response" className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#343440] text-sm text-[#d8d8df] transition hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}><ActionIcon kind="stop" /></button> : <button title="Send message" aria-label="Send message" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}><ActionIcon kind="send" /></button>}
         </div>
       </div>
       </section>
