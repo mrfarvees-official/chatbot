@@ -13,6 +13,15 @@
   --chatbot-muted: #858591;
   --chatbot-subtle: #777783;
   --chatbot-text-soft: #d8d8df;
+  --chatbot-code-bg: #111116;
+  --chatbot-code-text: #d4d4dc;
+  --chatbot-heading: #ffffff;
+  --chatbot-quote: #b5b5c0;
+  --chatbot-table-cell: #c4c4ce;
+  --chatbot-diagram-node: #1b1b23;
+  --chatbot-diagram-text: #f4f4f5;
+  --chatbot-diagram-muted: #a6a6b1;
+  --chatbot-diagram-grid: #3f3f4a;
   color-scheme: dark;
 }
 
@@ -29,6 +38,15 @@
   --chatbot-muted: #5d687c;
   --chatbot-subtle: #69758a;
   --chatbot-text-soft: #273248;
+  --chatbot-code-bg: #eef1f6;
+  --chatbot-code-text: #263247;
+  --chatbot-heading: #172033;
+  --chatbot-quote: #526078;
+  --chatbot-table-cell: #344158;
+  --chatbot-diagram-node: #e8edf5;
+  --chatbot-diagram-text: #172033;
+  --chatbot-diagram-muted: #526078;
+  --chatbot-diagram-grid: #aeb8c9;
   color-scheme: light;
 }
 
@@ -59,7 +77,13 @@ body {
 .chatbot-assistant-bubble { background: var(--chatbot-surface); border-color: var(--chatbot-border); color: var(--foreground); }
 .chatbot-muted { color: var(--chatbot-muted); }
 .chatbot-subtle { color: var(--chatbot-subtle); }
+.chatbot-avatar { background: #08080a; color: #fff; }
+.chatbot-error { color: #dc2626; }
 .chatbot-icon-button:hover { background: color-mix(in srgb, var(--chatbot-border) 70%, transparent); color: var(--foreground); }
+.chatbot-history-item { color: var(--chatbot-text-soft); }
+.chatbot-history-item:hover, .chatbot-history-selected { background: var(--chatbot-surface); color: var(--foreground); }
+
+[data-theme="light"] .chatbot-avatar { background: #dbe4f2; color: #172033; }
 
 ::selection { background: #2563eb; color: #fff; }
 

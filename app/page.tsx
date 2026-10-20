@@ -340,7 +340,7 @@ export default function Home() {
         <div className="flex-1 space-y-1 overflow-y-auto">
           {sessions.length === 0 && <p className="chatbot-subtle rounded-lg border border-dashed px-3 py-4 text-xs leading-5">Your saved conversations will appear here.</p>}
           {sessions.map((session) => (
-            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "chatbot-surface text-[var(--foreground)]" : "text-[var(--chatbot-text-soft)] hover:brightness-95"}`} onClick={() => openChat(session)} disabled={historyLoading}>
+            <button key={session.id} className={`chatbot-history-item group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "chatbot-history-selected" : ""}`} onClick={() => openChat(session)} disabled={historyLoading}>
               <span className="min-w-0 flex-1 truncate">{session.title}</span>
               <span className="chatbot-subtle hidden text-xs group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
             </button>
@@ -365,7 +365,7 @@ export default function Home() {
                   aria-haspopup="menu"
                   onClick={() => setAccountMenuOpen((open) => !open)}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#08080a] text-sm text-white">{(profileName || auth.email || "U").slice(0, 1).toUpperCase()}</span>
+                  <span className="chatbot-avatar flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm">{(profileName || auth.email || "U").slice(0, 1).toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{profileName || "Signed in"}</span>
                     <span className="chatbot-subtle block truncate">{auth.email}</span>
@@ -417,12 +417,12 @@ export default function Home() {
         </div>
       </div>
       {auth.status === "signed_out" && (
-        <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">
+        <p className="chatbot-muted mx-auto w-full max-w-4xl px-5 pb-2 text-sm sm:px-8">
           Sign in with a local email account to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
         </p>
       )}
-      {status && !busy && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">{status}</p>}
-      {error && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#f87171] sm:px-8">{error}</p>}
+      {status && !busy && <p className="chatbot-muted mx-auto w-full max-w-4xl px-5 pb-2 text-sm sm:px-8">{status}</p>}
+      {error && <p className="chatbot-error mx-auto w-full max-w-4xl px-5 pb-2 text-sm sm:px-8">{error}</p>}
       <div className="chatbot-composer-bar border-t px-5 py-4 sm:px-8">
         <div className="chatbot-composer mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
         <input ref={inputRef} className="chatbot-input min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] outline-none" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
