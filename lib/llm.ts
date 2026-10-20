@@ -78,7 +78,7 @@ export async function createModelStream(
     ],
     ...(tools.length ? { tools, tool_choice: toolChoice } : {}),
     stream: true,
-    ...(process.env.NVIDIA_REASONING_EFFORT
+    ...(process.env.NVIDIA_REASONING_EFFORT && /gpt-oss/i.test(NVIDIA_CHAT_MODEL)
       ? { reasoning_effort: process.env.NVIDIA_REASONING_EFFORT }
       : {}),
   } as OpenAI.Chat.ChatCompletionCreateParamsStreaming;
