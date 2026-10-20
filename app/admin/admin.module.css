@@ -1,0 +1,127 @@
+.shell { min-height: 100vh; background: var(--chatbot-panel); color: var(--foreground); }
+.loading { display: grid; min-height: 100vh; place-content: center; justify-items: center; gap: 12px; color: var(--chatbot-muted); }
+.loadingMark, .brandMark { display: grid; place-items: center; background: var(--chatbot-brand); color: white; box-shadow: 0 8px 20px color-mix(in srgb, var(--chatbot-brand) 28%, transparent); }
+.loadingMark { width: 44px; height: 44px; border-radius: 14px; font-size: 20px; }
+.topbar { position: sticky; z-index: 20; top: 0; display: flex; min-height: 76px; align-items: center; justify-content: space-between; gap: 32px; padding: 14px clamp(20px, 4vw, 64px); border-bottom: 1px solid var(--chatbot-border); background: color-mix(in srgb, var(--chatbot-sidebar) 92%, transparent); backdrop-filter: blur(18px); }
+.brand, .account, .headerActions, .backLink, .sectionHeader, .formFooter, .submitGroup, .fileButton { display: flex; align-items: center; }
+.brand { gap: 12px; color: var(--foreground); text-decoration: none; }
+.brandMark { width: 38px; height: 38px; border-radius: 12px; }
+.brand span:last-child, .accountText { display: grid; line-height: 1.2; }
+.brand strong { font-size: 14px; }
+.brand small, .account small { margin-top: 3px; color: var(--chatbot-subtle); font-size: 11px; }
+.headerActions { gap: 12px; }
+.backLink { gap: 7px; padding: 9px 12px; color: var(--chatbot-text-soft); font-size: 13px; text-decoration: none; }
+.backLink svg, .iconButton svg, .sectionIcon svg, .fileButton svg, .searchBox button svg, .deleteButton svg, .noticeIcon svg, .docIcon svg { width: 18px; height: 18px; }
+.iconButton { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--chatbot-border-strong); border-radius: 10px; background: var(--chatbot-surface); color: var(--chatbot-text-soft); cursor: pointer; }
+.iconButton:hover, .backLink:hover { background: var(--chatbot-history-hover); color: var(--foreground); }
+.account { gap: 10px; margin-left: 4px; padding-left: 16px; border-left: 1px solid var(--chatbot-border); }
+.avatar { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--chatbot-private-bg); color: var(--chatbot-private-text); font-size: 13px; font-weight: 700; }
+.accountText { max-width: 220px; }
+.accountText strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.account button { margin-left: 4px; border: 0; background: transparent; color: var(--chatbot-subtle); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.page { width: 100%; max-width: 1600px; margin: 0 auto; padding: clamp(36px, 5vw, 72px) clamp(20px, 4vw, 64px) 72px; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 48px; margin-bottom: 28px; }
+.eyebrow { margin: 0 0 8px; color: var(--chatbot-brand); font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.hero h1 { margin: 0; color: var(--chatbot-heading); font-size: clamp(32px, 4vw, 52px); font-weight: 650; letter-spacing: -.045em; line-height: 1.05; }
+.hero > div:first-child > p:last-child { max-width: 620px; margin: 14px 0 0; color: var(--chatbot-muted); font-size: 15px; line-height: 1.65; }
+.stats { display: flex; gap: 10px; }
+.stats div { min-width: 140px; padding: 18px 20px; border: 1px solid var(--chatbot-border); border-radius: 16px; background: var(--chatbot-sidebar); }
+.stats strong, .stats span { display: block; }
+.stats strong { color: var(--chatbot-heading); font-size: 24px; letter-spacing: -.03em; }
+.stats span { margin-top: 3px; color: var(--chatbot-subtle); font-size: 11px; }
+.notice { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; padding: 14px 16px; border: 1px solid color-mix(in srgb, #f59e0b 30%, var(--chatbot-border)); border-radius: 14px; background: color-mix(in srgb, #f59e0b 7%, var(--chatbot-surface)); }
+.noticeIcon { display: grid; flex: 0 0 32px; height: 32px; place-items: center; border-radius: 9px; background: color-mix(in srgb, #f59e0b 15%, transparent); color: #d97706; }
+.notice strong { font-size: 13px; }
+.notice p { margin: 3px 0 0; color: var(--chatbot-muted); font-size: 12px; line-height: 1.5; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); gap: 24px; align-items: stretch; }
+.card { border: 1px solid var(--chatbot-border); border-radius: 20px; background: var(--chatbot-sidebar); box-shadow: 0 18px 45px color-mix(in srgb, #000 8%, transparent); }
+.ingestCard, .searchCard { padding: clamp(22px, 2.5vw, 34px); }
+.sectionHeader { gap: 14px; align-items: flex-start; }
+.sectionIcon { display: grid; flex: 0 0 42px; height: 42px; place-items: center; border: 1px solid var(--chatbot-border); border-radius: 12px; background: var(--chatbot-surface); color: var(--chatbot-brand); }
+.sectionHeader h2 { margin: 0; color: var(--chatbot-heading); font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
+.sectionHeader div > p:last-child { margin: 5px 0 0; color: var(--chatbot-muted); font-size: 12px; line-height: 1.45; }
+.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
+.formGrid label, .textareaLabel { display: grid; gap: 7px; color: var(--chatbot-text-soft); font-size: 12px; font-weight: 600; }
+.formGrid label small { margin-left: 5px; color: var(--chatbot-subtle); font-weight: 400; }
+.textareaLabel { margin-top: 14px; }
+.formGrid input, .textareaLabel textarea, .searchBox input { width: 100%; border: 1px solid var(--chatbot-border-strong); outline: none; background: var(--chatbot-input); color: var(--foreground); }
+.formGrid input { height: 44px; padding: 0 13px; border-radius: 11px; }
+.textareaLabel textarea { min-height: 232px; resize: vertical; padding: 13px; border-radius: 12px; line-height: 1.55; }
+.formGrid input:focus, .textareaLabel textarea:focus, .searchBox:focus-within { border-color: var(--chatbot-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--chatbot-focus) 13%, transparent); }
+.formGrid input::placeholder, .textareaLabel textarea::placeholder, .searchBox input::placeholder { color: var(--chatbot-subtle); }
+.formFooter { justify-content: space-between; gap: 20px; margin-top: 16px; }
+.fileButton { position: relative; gap: 8px; color: var(--chatbot-muted); font-size: 12px; cursor: pointer; }
+.fileButton input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fileButton:hover { color: var(--foreground); }
+.submitGroup { justify-content: flex-end; gap: 12px; }
+.submitGroup p, .inlineStatus { margin: 0; color: var(--chatbot-muted); font-size: 12px; }
+.primaryButton { min-height: 40px; padding: 0 17px; border: 0; border-radius: 10px; background: var(--chatbot-brand); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.primaryButton:hover:not(:disabled) { filter: brightness(1.1); }
+.primaryButton:disabled, .searchBox button:disabled { cursor: not-allowed; opacity: .4; }
+.searchCard { display: flex; min-height: 100%; flex-direction: column; }
+.searchBox { display: flex; margin-top: 28px; padding: 5px; border: 1px solid var(--chatbot-border-strong); border-radius: 12px; background: var(--chatbot-input); }
+.searchBox input { min-width: 0; height: 40px; flex: 1; padding: 0 10px; border: 0; background: transparent; }
+.searchBox input:focus { box-shadow: none; }
+.searchBox button { display: flex; align-items: center; gap: 7px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--chatbot-brand); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.inlineStatus { margin-top: 11px; }
+.results { min-height: 260px; margin-top: 14px; }
+.emptyState, .emptyDocuments { display: grid; place-items: center; align-content: center; color: var(--chatbot-subtle); text-align: center; }
+.emptyState { min-height: 250px; border: 1px dashed var(--chatbot-border-strong); border-radius: 14px; }
+.emptyState svg { width: 28px; height: 28px; margin-bottom: 8px; opacity: .65; }
+.emptyState p { margin: 0; font-size: 12px; }
+.result { padding: 14px 0; border-bottom: 1px solid var(--chatbot-border); }
+.result:first-child { padding-top: 2px; }
+.result:last-child { border-bottom: 0; }
+.result > div { display: flex; justify-content: space-between; gap: 12px; }
+.result strong { font-size: 13px; }
+.result div span { flex: 0 0 auto; color: #22c55e; font-size: 11px; font-weight: 700; }
+.result p { display: -webkit-box; overflow: hidden; margin: 7px 0; color: var(--chatbot-text-soft); font-size: 12px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.result small { color: var(--chatbot-subtle); font-size: 10px; }
+.documentsCard { overflow: hidden; margin-top: 24px; }
+.documentsHeader { padding: 25px 28px; border-bottom: 1px solid var(--chatbot-border); }
+.documentList { padding: 0 12px 12px; }
+.documentRow { display: grid; grid-template-columns: 42px minmax(200px, 1fr) 120px 180px 42px; align-items: center; gap: 16px; min-height: 78px; padding: 10px 14px; border-bottom: 1px solid var(--chatbot-border); }
+.documentRow:last-child { border-bottom: 0; }
+.documentRow:hover { border-radius: 12px; background: color-mix(in srgb, var(--chatbot-surface) 70%, transparent); }
+.docIcon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 10px; background: var(--chatbot-surface); color: var(--chatbot-muted); }
+.docName, .docMeta { display: grid; gap: 4px; min-width: 0; }
+.docName strong, .docName span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docName strong, .docMeta strong { color: var(--chatbot-text-soft); font-size: 13px; }
+.docName span, .docMeta span { color: var(--chatbot-subtle); font-size: 10px; }
+.deleteButton { display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--chatbot-subtle); cursor: pointer; }
+.deleteButton:hover { background: color-mix(in srgb, #ef4444 12%, transparent); color: #ef4444; }
+.emptyDocuments { min-height: 220px; }
+.emptyDocuments svg { width: 34px; height: 34px; margin-bottom: 12px; }
+.emptyDocuments h3 { margin: 0; color: var(--chatbot-text-soft); font-size: 14px; }
+.emptyDocuments p { margin: 5px 0 0; font-size: 12px; }
+@media (max-width: 1000px) {
+  .workspace { grid-template-columns: 1fr; }
+  .searchCard { min-height: 520px; }
+  .accountText, .backLink { display: none; }
+  .account { padding-left: 10px; }
+}
+@media (max-width: 720px) {
+  .topbar { min-height: 66px; padding: 11px 16px; }
+  .brand small, .account .avatar { display: none; }
+  .account { margin: 0; padding-left: 8px; }
+  .page { padding: 30px 16px 48px; }
+  .hero { display: grid; gap: 24px; }
+  .stats { width: 100%; }
+  .stats div { min-width: 0; flex: 1; }
+  .formGrid { grid-template-columns: 1fr; }
+  .formFooter { align-items: flex-start; flex-direction: column; }
+  .submitGroup { width: 100%; justify-content: space-between; }
+  .documentRow { grid-template-columns: 38px minmax(0, 1fr) 34px; gap: 10px; }
+  .docMeta { display: none; }
+  .documentsHeader { padding: 22px 20px; }
+  .documentList { padding: 0 6px 6px; }
+}
+@media (max-width: 430px) {
+  .brand strong { font-size: 13px; }
+  .headerActions { gap: 5px; }
+  .account button { margin: 0; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; }
+  .searchBox button span { display: none; }
+  .searchBox button { padding: 0 12px; }
+  .submitGroup { align-items: flex-end; }
+}
