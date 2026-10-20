@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { extension } from "@/lib/extension-client";
+import { MarkdownViewer } from "@/app/components/markdown-viewer";
 
 type ToolCall = {
   id: string;
@@ -292,9 +293,9 @@ export default function Home() {
         <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-3 pb-4">
         {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="text-sm text-[#858591]">Ask me anything about the portfolio.</p></div></div>}
         {visible.map((message, index) => (
-          <div key={index} className={message.role === "user" ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[15px] leading-6 text-[#ededf2]"}>{message.content}</div>
+          <div key={index} className={message.role === "user" ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
         ))}
-        {streaming && <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[15px] leading-6 text-[#ededf2]">{streaming}</div>}
+        {streaming && <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"><MarkdownViewer content={streaming} /></div>}
         <div ref={bottomRef} />
         </div>
       </div>
