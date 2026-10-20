@@ -33,11 +33,22 @@ function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "se
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">{paths}</svg>;
 }
 
-function WorkIndicator({ busy, status, streaming }: { busy: boolean; status: string; streaming: string }) {
+function ToolIcon({ kind }: { kind: "gmail" | "calendar" | "meet" | "browser" }) {
+  const paths = {
+    gmail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    calendar: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><path d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" /></>,
+    meet: <><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3Z" /></>,
+    browser: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.5 3.3 5.5 3.3 9s-1.1 6.5-3.3 9c-2.2-2.5-3.3-5.5-3.3-9S9.8 5.5 12 3Z" /></>,
+  }[kind];
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 chatbot-tool-${kind}`}>{paths}</svg>;
+}
+
+function WorkIndicator({ busy, status, streaming, activeTool }: { busy: boolean; status: string; streaming: string; activeTool: string | null }) {
   if (!busy) return null;
   const label = status || (streaming ? "Writing response" : "Thinking");
+  const kind = activeTool?.startsWith("gmail_") ? "gmail" : activeTool?.startsWith("calendar_") ? "calendar" : activeTool?.startsWith("meet_") ? "meet" : activeTool ? "browser" : null;
   return <div className="flex items-center gap-2 py-2 text-xs text-[#858591]" aria-live="polite">
-    <span className="chatbot-work-orb flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]/20"><span className="h-2 w-2 rounded-full bg-[#60a5fa]" /></span>
+    <span className="chatbot-work-orb flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]/20">{kind ? <ToolIcon kind={kind} /> : <span className="h-2 w-2 rounded-full bg-[#60a5fa]" />}</span>
     <span>{label}</span>
     <span className="flex items-end gap-0.5" aria-hidden="true"><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /></span>
   </div>;
@@ -57,6 +68,7 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -179,8 +191,10 @@ export default function Home() {
           break;
         }
         for (const call of calls) {
+          setActiveTool(call.name);
           setStatus(`Opening ${call.name.replaceAll("_", " ")}… check for an approval popup`);
           const result = await extension.callTool(call.name, call.args).catch((e) => ({ ok: false, reason: String(e) }));
+          setActiveTool(null);
           const toolMessage: Msg = {
             role: "tool",
             tool_call_id: call.id,
@@ -200,6 +214,7 @@ export default function Home() {
     } finally {
       setStreaming("");
       setBusy(false);
+      setActiveTool(null);
       abortRef.current = null;
     }
   }
@@ -342,7 +357,7 @@ export default function Home() {
           </div>
         ))}
         {streaming && <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"><MarkdownViewer content={streaming} /></div>}
-        <WorkIndicator busy={busy} status={status} streaming={streaming} />
+        <WorkIndicator busy={busy} status={status} streaming={streaming} activeTool={activeTool} />
         <div ref={bottomRef} />
         </div>
       </div>
