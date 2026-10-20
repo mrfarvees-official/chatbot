@@ -235,29 +235,32 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto flex h-dvh max-w-5xl gap-4 p-4">
-      <aside className="hidden w-64 shrink-0 flex-col border-r pr-3 md:flex">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-semibold">Your chats</span>
-          <button className="rounded-lg border px-2 py-1 text-xs" onClick={startNewChat} disabled={busy}>New chat</button>
+    <main className="flex h-dvh w-full overflow-hidden bg-[#08080a] text-[#f4f4f5]">
+      <aside className="hidden w-72 shrink-0 flex-col border-r border-[#25252d] bg-[#0d0d10] px-4 py-5 md:flex">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[#777783]">History</p>
+            <span className="text-sm font-semibold text-[#f4f4f5]">Your chats</span>
+          </div>
+          <button className="rounded-lg border border-[#343440] bg-[#17171d] px-2.5 py-1.5 text-xs text-[#d8d8df] transition hover:bg-[#22222a]" onClick={startNewChat} disabled={busy}>New chat</button>
         </div>
         <div className="space-y-1 overflow-y-auto">
-          {sessions.length === 0 && <p className="text-xs text-neutral-500">No saved chats yet.</p>}
+          {sessions.length === 0 && <p className="rounded-lg border border-dashed border-[#292930] px-3 py-4 text-xs leading-5 text-[#777783]">Your saved conversations will appear here.</p>}
           {sessions.map((session) => (
-            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${session.id === sessionId ? "bg-neutral-200" : "hover:bg-neutral-100"}`} onClick={() => openChat(session)} disabled={historyLoading}>
+            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "bg-[#1b1b23] text-[#fff]" : "text-[#a6a6b1] hover:bg-[#15151b] hover:text-[#ededf2]"}`} onClick={() => openChat(session)} disabled={historyLoading}>
               <span className="min-w-0 flex-1 truncate">{session.title}</span>
-              <span className="hidden text-xs text-neutral-500 group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
+              <span className="hidden text-xs text-[#777783] group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
             </button>
           ))}
         </div>
       </aside>
-      <section className="mx-auto flex min-w-0 max-w-2xl flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between text-xs text-neutral-500">
+      <section className="flex min-w-0 flex-1 flex-col bg-[#09090b]">
+      <div className="flex min-h-16 items-center justify-between border-b border-[#25252d] px-5 py-3 text-xs text-[#858591] sm:px-8">
         <span>Portfolio assistant</span>
         <div className="flex items-center gap-3">
-          <button className="rounded-lg border px-2 py-1 text-xs md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
+          <button className="rounded-lg border border-[#343440] bg-[#17171d] px-2.5 py-1.5 text-xs text-[#d8d8df] md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
           {extensionState === "connected" ? (
-            <span className="rounded-full border px-2 py-1">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
+            <span className="rounded-full border border-[#343440] bg-[#121217] px-2.5 py-1 text-[#b9b9c4]">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
           ) : extensionState === "missing" && installUrl ? (
             <a className="underline" href={installUrl} target="_blank" rel="noreferrer">Install the Site Agent extension to let me act in your browser</a>
           ) : extensionState === "missing" ? (
@@ -285,24 +288,28 @@ export default function Home() {
           )}
         </div>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto pb-4">
-        {visible.length === 0 && <p className="mt-20 text-center text-neutral-500">Ask me anything.</p>}
+      <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
+        <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-3 pb-4">
+        {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="text-sm text-[#858591]">Ask me anything about the portfolio.</p></div></div>}
         {visible.map((message, index) => (
-          <div key={index} className={message.role === "user" ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl bg-blue-600 px-4 py-2 text-white" : "w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl bg-neutral-200 px-4 py-2 text-neutral-900"}>{message.content}</div>
+          <div key={index} className={message.role === "user" ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[15px] leading-6 text-[#ededf2]"}>{message.content}</div>
         ))}
-        {streaming && <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl bg-neutral-200 px-4 py-2 text-neutral-900">{streaming}</div>}
+        {streaming && <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[15px] leading-6 text-[#ededf2]">{streaming}</div>}
         <div ref={bottomRef} />
+        </div>
       </div>
       {auth.status === "signed_out" && (
-        <p className="pb-2 text-sm text-neutral-600">
+        <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">
           Sign in with a local email account to use the public chatbot. <a className="underline" href="/login">Continue to sign in</a>
         </p>
       )}
-      {status && <p className="pb-2 text-sm text-neutral-600">{status}</p>}
-      {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2 w-2xl">
-        <input className="flex-1 rounded-xl border px-4 py-2 w-1/2" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
-        {busy ? <button className="rounded-xl border px-4" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={send}>Send</button>}
+      {status && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">{status}</p>}
+      {error && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#f87171] sm:px-8">{error}</p>}
+      <div className="border-t border-[#25252d] bg-[#0d0d10] px-5 py-4 sm:px-8">
+        <div className="mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border border-[#30303a] bg-[#141419] p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
+        <input className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-[#f4f4f5] outline-none placeholder:text-[#6f6f7b]" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
+        {busy ? <button className="rounded-xl border border-[#343440] px-4 text-sm text-[#d8d8df] hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-[#2563eb] px-4 text-sm font-medium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={send}>Send</button>}
+        </div>
       </div>
       </section>
     </main>
