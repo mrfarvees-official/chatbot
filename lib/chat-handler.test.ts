@@ -133,7 +133,7 @@ describe("tool sanitization", () => {
       { role: "tool", tool_call_id: "draft-1", content: '{"ok":true,"note":"Draft opened, NOT sent"}' },
       { role: "assistant", content: "Draft opened, NOT sent" },
     ])!;
-    for (const instruction of ["send", "send it", "please send the draft now"]) {
+    for (const instruction of ["send", "send it", "please send the draft now", "now send it", "send this mail", "send draft", "okay, send it"]) {
       const messages = parseMessages([...draftHistory, { role: "user", content: instruction }])!;
       const selected = selectToolsForQuery(tools, messages);
       expect(selected).toHaveLength(1);
@@ -153,6 +153,8 @@ describe("tool sanitization", () => {
     ])!;
     expect(preferredToolForQuery(tools, messages)).toBeNull();
     expect(preferredToolForQuery(tools, [{ role: "user", content: "send" }])).toBeNull();
+    expect(preferredToolForQuery(tools, [{ role: "user", content: "send draft" }])).toBe("gmail_send_current_draft");
+    expect(preferredToolForQuery(tools, [{ role: "user", content: "create a new draft" }])).toBe("gmail_compose_draft");
   });
 
   it("preserves the Gmail draft schema sent to the model", () => {
@@ -184,6 +186,11 @@ describe("tool sanitization", () => {
 });
 
 describe("tool-capable model prompt", () => {
+  it("explains absent tools and the actual extension approval order", () => {
+    expect(buildSystemPrompt([], false)).toContain("No browser tools are available");
+    expect(buildSystemPrompt([], false)).toContain("Never print tool-call markup");
+    expect(buildSystemPrompt([], true)).toContain("clicking Send manually in Gmail does not trigger an extension approval popup");
+  });
   it("requires explicit email requests to use an available browser tool", () => {
     const prompt = buildSystemPrompt([], true);
     expect(prompt).toContain("call the appropriate email tool");

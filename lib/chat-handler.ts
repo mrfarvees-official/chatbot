@@ -226,8 +226,9 @@ function gmailFollowUpTool(messages: ChatMessage[]): string | null {
   if (/^(?:please\s+)?(?:send|save|keep)(?:\s+(?:it|this|that|the email))?\s+as\s+(?:a\s+)?draft[.!?]*$/.test(instruction)) {
     return "gmail_compose_draft";
   }
-  const sendExisting = /^(?:please\s+)?send(?:\s+(?:it|this|that|the (?:email|draft)|(?:the )?current draft))?(?:\s+(?:now|please))?[.!?]*$/.test(instruction);
+  const sendExisting = /^(?:(?:ok|okay|please|now)[,\s]+)*send(?:\s+(?:(?:this|that|the|current)\s+)?(?:it|mail|email|draft))?(?:\s+(?:now|please))?[.!?]*$/.test(instruction);
   if (!sendExisting) return null;
+  if (/\b(?:mail|email|draft)\b/.test(instruction)) return "gmail_send_current_draft";
   // Only interpret a bare "send" as Gmail when the conversation has a successful
   // draft outcome. The extension independently requires approval before sending.
   const draftCalls = new Set<string>();
@@ -416,6 +417,12 @@ function ndjsonStream(
             current.function.arguments += deltaCall.function?.arguments ?? "";
             calls.set(index, current);
           }
+        }
+        if (!calls.size && /<tool_call\b|<function=/i.test(content)) {
+          write({ type: "error", message: "The model returned action text instead of an executable tool call. No browser action was run. Please retry with the extension connected." });
+          write({ type: "done" });
+          controller.close();
+          return;
         }
         const toolCalls = [...calls.values()];
         if (!toolCalls.length && preferred && ["calendar_search_events", "gmail_search"].includes(preferred)) {

@@ -187,6 +187,11 @@ export default function Home() {
         const tools = (await extension.listTools()).filter(
           (tool): tool is Tool => Boolean(tool && typeof tool === "object"),
         );
+        if (!tools.length && (extensionState === "connected" ||
+          /\b(?:gmail|email|e-mail|mail|draft|calendar|meet)\b/i.test(text) && /\b(?:send|create|open|search|find|check|join|draft)\b/i.test(text))) {
+          setExtensionState("missing");
+          throw new Error("Extension tools are unavailable. Reload Site Agent in your browser's Extensions page, refresh this page, then retry. No browser action was run.");
+        }
         if (tools.length && extensionState !== "connected") {
           setExtensionState("connected");
         }
