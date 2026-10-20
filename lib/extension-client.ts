@@ -10,7 +10,7 @@ function debug(event: string, details?: Record<string, unknown>) {
 function request<T>(
   type: string,
   extra: object = {},
-  timeoutMs = 90_000,
+  timeoutMs = 150_000,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const id = `${Date.now()}-${++seq}`;
@@ -73,7 +73,8 @@ export const extension = {
       return [];
     }
   },
-  // 90s: an approval popup can wait up to 60s
+  // A first action can require site consent and an action approval (60s each).
+  // Keep this bounded, but do not expire while the user is completing those prompts.
   callTool: (name: string, args: unknown): Promise<unknown> =>
     request<unknown>("CALL_TOOL", { name, args }),
 };
