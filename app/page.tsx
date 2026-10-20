@@ -79,6 +79,7 @@ export default function Home() {
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [privateMode, setPrivateMode] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,14 @@ export default function Home() {
   useEffect(() => {
     const saved = window.localStorage.getItem("chatbot-theme");
     if (saved === "light" || saved === "dark") window.setTimeout(() => setTheme(saved), 0);
+    if (window.localStorage.getItem("chatbot-private-mode") === "true") {
+      window.setTimeout(() => {
+        setPrivateMode(true);
+        setSessionId(null);
+        setMessages([]);
+        setSessions([]);
+      }, 0);
+    }
   }, []);
 
   useEffect(() => {
@@ -104,7 +113,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (auth.status !== "signed_in") return;
+    if (auth.status !== "signed_in" || privateMode) return;
     fetch("/api/chat/sessions")
       .then(async (res) => {
         if (!res.ok) throw new Error("Could not load chat history");
@@ -121,7 +130,7 @@ export default function Home() {
         setMessages(loaded.messages ?? []);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Could not load chat history"));
-  }, [auth.status]);
+  }, [auth.status, privateMode]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -158,8 +167,8 @@ export default function Home() {
     setMessages(working);
 
     try {
-      let activeSessionId = sessionId;
-      if (!activeSessionId) {
+      let activeSessionId = privateMode ? null : sessionId;
+      if (!privateMode && !activeSessionId) {
         const created = await fetch("/api/chat/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -172,7 +181,7 @@ export default function Home() {
         setSessions((current) => [data.session, ...current]);
       }
       let completed = false;
-      await saveHistory(activeSessionId, working);
+      if (!privateMode) await saveHistory(activeSessionId, working);
       for (let round = 0; round < 6 && !completed; round++) {
         const tools = (await extension.listTools()).filter(
           (tool): tool is Tool => Boolean(tool && typeof tool === "object"),
@@ -183,7 +192,7 @@ export default function Home() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: working, sessionId: activeSessionId, ...(tools.length ? { tools } : {}) }),
+          body: JSON.stringify({ messages: working, ...(activeSessionId ? { sessionId: activeSessionId } : {}), ...(tools.length ? { tools } : {}) }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
@@ -217,7 +226,7 @@ export default function Home() {
           if (done) break;
         }
         if (!calls.length) {
-          await saveHistory(activeSessionId, working);
+          if (!privateMode) await saveHistory(activeSessionId, working);
           completed = true;
           break;
         }
@@ -234,7 +243,7 @@ export default function Home() {
           working = [...working, toolMessage];
           setMessages(working);
         }
-        await saveHistory(activeSessionId, working);
+        if (!privateMode) await saveHistory(activeSessionId, working);
         setStatus("");
       }
       if (!completed) setStatus("Stopped after 6 rounds.");
@@ -277,6 +286,19 @@ export default function Home() {
     setSessions((current) => current.map((session) => session.id === id
       ? { ...session, messageCount: history.length, updatedAt: new Date().toISOString() }
       : session));
+  }
+
+  function togglePrivateMode() {
+    const next = !privateMode;
+    setPrivateMode(next);
+    window.localStorage.setItem("chatbot-private-mode", String(next));
+    if (next) {
+      setSessionId(null);
+      setMessages([]);
+      setSessions([]);
+      setError("");
+      setStatus("");
+    }
   }
 
   async function startNewChat() {
@@ -345,8 +367,8 @@ export default function Home() {
           <button className="chatbot-surface rounded-lg border px-2.5 py-1.5 text-xs text-[var(--chatbot-text-soft)] transition hover:brightness-95" onClick={startNewChat} disabled={busy}>New chat</button>
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto">
-          {sessions.length === 0 && <p className="chatbot-subtle rounded-lg border border-dashed px-3 py-4 text-xs leading-5">Your saved conversations will appear here.</p>}
-          {sessions.map((session) => (
+          {privateMode ? <p className="chatbot-private-note rounded-lg border border-dashed px-3 py-4 text-xs leading-5"><span className="font-medium">Private mode is on.</span><br />Chats are not saved to history.</p> : sessions.length === 0 && <p className="chatbot-subtle rounded-lg border border-dashed px-3 py-4 text-xs leading-5">Your saved conversations will appear here.</p>}
+          {!privateMode && sessions.map((session) => (
             <button key={session.id} className={`chatbot-history-item group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "chatbot-history-selected" : ""}`} onClick={() => openChat(session)} disabled={historyLoading}>
               <span className="min-w-0 flex-1 truncate">{session.title}</span>
               <span className="chatbot-subtle hidden text-xs group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
@@ -390,7 +412,7 @@ export default function Home() {
       </aside>
       <section className="chatbot-panel flex min-w-0 flex-1 flex-col">
       <div className="chatbot-header flex min-h-16 items-center justify-between border-b px-5 py-3 text-xs sm:px-8">
-        <span className="flex items-center gap-2"><span className="chatbot-status-dot h-1.5 w-1.5 rounded-full" />Chatbot</span>
+        <button className={`chatbot-private-toggle rounded-lg border px-3 py-2 transition ${privateMode ? "chatbot-private-active" : ""}`} aria-pressed={privateMode} onClick={togglePrivateMode} disabled={busy}>{privateMode ? "Private mode · On" : "Private mode"}</button>
         <div className="flex items-center gap-3">
           <button
             className="chatbot-surface chatbot-icon-button rounded-lg border p-2 text-[var(--chatbot-text-soft)]"

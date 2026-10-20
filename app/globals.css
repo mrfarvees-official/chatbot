@@ -27,6 +27,8 @@
   --chatbot-history-selected-hover: #383852;
   --chatbot-focus: #4b5563;
   --chatbot-brand: #2563eb;
+  --chatbot-private-bg: #1f2937;
+  --chatbot-private-text: #dbeafe;
   color-scheme: dark;
 }
 
@@ -57,6 +59,8 @@
   --chatbot-history-selected-hover: #b9d1ef;
   --chatbot-focus: #7c9ed1;
   --chatbot-brand: #2563eb;
+  --chatbot-private-bg: #e6eefb;
+  --chatbot-private-text: #24436e;
   color-scheme: light;
 }
 
@@ -97,6 +101,9 @@ body {
 .chatbot-history-selected:hover { background: var(--chatbot-history-selected-hover); }
 .chatbot-brand-mark { background: var(--chatbot-brand); color: #fff; box-shadow: 0 8px 20px color-mix(in srgb, var(--chatbot-brand) 28%, transparent); }
 .chatbot-status-dot { background: #22c55e; box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 18%, transparent); }
+.chatbot-private-toggle { background: transparent; border-color: var(--chatbot-border-strong); color: var(--chatbot-text-soft); }
+.chatbot-private-toggle:hover, .chatbot-private-active { background: var(--chatbot-private-bg); color: var(--chatbot-private-text); }
+.chatbot-private-note { border-color: var(--chatbot-border-strong); color: var(--chatbot-muted); }
 
 [data-theme="light"] .chatbot-avatar { background: #dbe4f2; color: #172033; }
 
