@@ -116,7 +116,7 @@ export default function Home() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: working, ...(tools.length ? { tools } : {}) }),
+          body: JSON.stringify({ messages: working, sessionId: activeSessionId, ...(tools.length ? { tools } : {}) }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {

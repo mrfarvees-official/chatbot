@@ -8,6 +8,7 @@ import {
 } from "./llm";
 import { getLocalUser } from "./local-auth";
 import { db, sql } from "./local-db";
+import { getChatMessages, replaceChatMessages } from "./chat-history";
 import { retrieve } from "./retrieval";
 import { rateLimit } from "./rate-limit";
 
@@ -250,6 +251,7 @@ function ndjsonStream(
   tools: ModelTool[],
   signal: AbortSignal,
   profile?: VisitorProfile | null,
+  history?: { userId: string; sessionId: string },
 ) {
   const encoder = new TextEncoder();
   return new ReadableStream({
@@ -313,10 +315,25 @@ function ndjsonStream(
               },
             })),
           };
+          if (history) {
+            try {
+              replaceChatMessages(history.userId, history.sessionId, [...messages, assistant]);
+            } catch {
+              console.error("Chat history response save failed");
+            }
+          }
           write({ type: "assistant_message", message: assistant });
           write({ type: "tool_calls", calls: parsed });
         } else {
-          write({ type: "assistant_message", message: { role: "assistant" as const, content: content || null } });
+          const assistant = { role: "assistant" as const, content: content || null };
+          if (history) {
+            try {
+              replaceChatMessages(history.userId, history.sessionId, [...messages, assistant]);
+            } catch {
+              console.error("Chat history response save failed");
+            }
+          }
+          write({ type: "assistant_message", message: assistant });
         }
         write({ type: "done" });
         controller.close();
@@ -352,9 +369,13 @@ export async function handleChat(req: Request) {
   } catch (error) {
     console.error("Chat auth lookup failed:", error);
   }
-  const authenticated = Boolean(user?.email && user.email_confirmed_at);
-  if (!authenticated) return Response.json({ error: "Authentication required" }, { status: 401 });
+  if (!user?.email || !user.email_confirmed_at) return Response.json({ error: "Authentication required" }, { status: 401 });
+  const authenticated = true;
+  const authenticatedUser = user;
   const tools = sanitizeTools(body?.tools, authenticated);
+  const sessionId = typeof body?.sessionId === "string" ? body.sessionId : null;
+  if (sessionId && !getChatMessages(authenticatedUser.id, sessionId))
+    return Response.json({ error: "Chat session not found" }, { status: 404 });
   if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
     console.debug("[chat] tools", {
       count: tools.length,
@@ -364,7 +385,7 @@ export async function handleChat(req: Request) {
     });
   }
   const sources = await retrieve(queryFor(messages));
-  return new Response(ndjsonStream(messages, sources, tools, req.signal, profile), {
+  return new Response(ndjsonStream(messages, sources, tools, req.signal, profile, sessionId ? { userId: authenticatedUser.id, sessionId } : undefined), {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store",
