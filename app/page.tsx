@@ -333,7 +333,7 @@ export default function Home() {
         <div className="mb-7 flex items-center gap-3">
           <span className="chatbot-brand-mark flex h-9 w-9 items-center justify-center rounded-xl text-lg">✦</span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Portfolio assistant</p>
+            <p className="truncate text-sm font-semibold">Chatbot</p>
             <p className="chatbot-subtle text-xs">Personal workspace</p>
           </div>
         </div>
@@ -390,7 +390,7 @@ export default function Home() {
       </aside>
       <section className="chatbot-panel flex min-w-0 flex-1 flex-col">
       <div className="chatbot-header flex min-h-16 items-center justify-between border-b px-5 py-3 text-xs sm:px-8">
-        <span className="flex items-center gap-2"><span className="chatbot-status-dot h-1.5 w-1.5 rounded-full" />Portfolio assistant</span>
+        <span className="flex items-center gap-2"><span className="chatbot-status-dot h-1.5 w-1.5 rounded-full" />Chatbot</span>
         <div className="flex items-center gap-3">
           <button
             className="chatbot-surface chatbot-icon-button rounded-lg border p-2 text-[var(--chatbot-text-soft)]"
