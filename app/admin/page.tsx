@@ -1,7 +1,56 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import styles from "./admin.module.css";
+import "./admin.module.css";
+
+// The project's Tailwind Turbopack loader emits CSS module selectors globally.
+// Keep an explicit class map so the stylesheet remains usable with that loader.
+const styles = {
+  account: "account",
+  accountText: "accountText",
+  avatar: "avatar",
+  backLink: "backLink",
+  brand: "brand",
+  brandMark: "brandMark",
+  card: "card",
+  deleteButton: "deleteButton",
+  docIcon: "docIcon",
+  docMeta: "docMeta",
+  docName: "docName",
+  documentList: "documentList",
+  documentRow: "documentRow",
+  documentsCard: "documentsCard",
+  documentsHeader: "documentsHeader",
+  emptyDocuments: "emptyDocuments",
+  emptyState: "emptyState",
+  eyebrow: "eyebrow",
+  fileButton: "fileButton",
+  formFooter: "formFooter",
+  formGrid: "formGrid",
+  headerActions: "headerActions",
+  hero: "hero",
+  iconButton: "iconButton",
+  ingestCard: "ingestCard",
+  inlineStatus: "inlineStatus",
+  loading: "loading",
+  loadingMark: "loadingMark",
+  notice: "notice",
+  noticeIcon: "noticeIcon",
+  page: "page",
+  primaryButton: "primaryButton",
+  result: "result",
+  results: "results",
+  searchBox: "searchBox",
+  searchCard: "searchCard",
+  sectionHeader: "sectionHeader",
+  sectionIcon: "sectionIcon",
+  shell: "shell",
+  stats: "stats",
+  submitGroup: "submitGroup",
+  textareaLabel: "textareaLabel",
+  topbar: "topbar",
+  workspace: "workspace",
+} as const;
 
 type Doc = { id: string; title: string; source: string | null; updated_at: string; chunks: { count: number }[] };
 type SearchResult = { title: string; similarity: number; score: number; snippet: string };
