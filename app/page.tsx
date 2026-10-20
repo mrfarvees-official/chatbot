@@ -79,6 +79,7 @@ export default function Home() {
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -357,15 +358,24 @@ export default function Home() {
           <div>
             <p className="chatbot-subtle mb-2 uppercase tracking-[0.16em]">Account</p>
             {auth.status === "signed_in" ? (
-              <div className="chatbot-surface space-y-2 rounded-xl border p-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{profileName || "Signed in"}</p>
-                  <p className="chatbot-subtle truncate">{auth.email}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <a className="underline" href="/account">View profile</a>
-                  <button className="underline" onClick={signOut}>Sign out</button>
-                </div>
+              <div className="relative">
+                <button
+                  className="chatbot-surface flex w-full items-center gap-3 rounded-xl border p-3 text-left transition hover:brightness-95"
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setAccountMenuOpen((open) => !open)}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#08080a] text-sm text-white">{(profileName || auth.email || "U").slice(0, 1).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{profileName || "Signed in"}</span>
+                    <span className="chatbot-subtle block truncate">{auth.email}</span>
+                  </span>
+                  <span className="chatbot-subtle text-sm" aria-hidden="true">{accountMenuOpen ? "⌃" : "⌄"}</span>
+                </button>
+                {accountMenuOpen && <div className="chatbot-surface absolute bottom-full left-0 z-10 mb-2 w-full space-y-1 rounded-xl border p-2 shadow-xl" role="menu">
+                  <a className="block rounded-lg px-3 py-2 hover:brightness-95" href="/account" role="menuitem">View profile</a>
+                  <button className="block w-full rounded-lg px-3 py-2 text-left hover:brightness-95" onClick={signOut} role="menuitem">Sign out</button>
+                </div>}
               </div>
             ) : auth.status === "checking" ? <span>Checking sign-in…</span> : <a className="underline" href="/login">Sign in for advanced tools</a>}
           </div>
