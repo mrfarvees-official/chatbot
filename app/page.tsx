@@ -356,7 +356,7 @@ export default function Home() {
         {visible.map((message, index) => (
           <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[85%]`}>
             <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
-            <div className={`mt-1 flex items-center gap-2 text-[11px] text-[#777783] ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`mt-1 flex items-center gap-2 text-[11px] text-[#777783] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
               {message.createdAt && <time className={message.role === "user" ? "order-2 mr-1" : "order-1"} dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>}
               <span className={`flex gap-1 ${message.role === "user" ? "order-1" : "order-2"}`}>
                 <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
