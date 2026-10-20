@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "./llm";
-import { fillProfileTokens, ndjsonEvent, parseHistoryMessages, parseMessages, sanitizeTools } from "./chat-handler";
+import { fillProfileTokens, ndjsonEvent, parseHistoryMessages, parseMessages, sanitizeTools, selectToolsForQuery } from "./chat-handler";
 
 describe("chat validation", () => {
   it("accepts a saved conversation ending with an assistant message", () => {
@@ -71,6 +71,25 @@ describe("tool sanitization", () => {
 
   it("drops oversized descriptions", () => {
     expect(sanitizeTools([valid("gmail_compose_draft", "x".repeat(501))])).toEqual([]);
+  });
+
+  it("sends only the relevant extension tool family to the model", () => {
+    const tools = sanitizeTools([
+      valid("gmail_search"),
+      valid("gmail_compose_draft"),
+      valid("calendar_search_events"),
+      valid("meet_join_meeting"),
+    ], true);
+    const selected = selectToolsForQuery(tools, [{ role: "user", content: "Search Gmail for messages from account@example.com" }]);
+    expect(selected.map((tool) => (tool as { function: { name: string } }).function.name)).toEqual([
+      "gmail_search",
+      "gmail_compose_draft",
+    ]);
+  });
+
+  it("does not send browser tools for ordinary knowledge questions", () => {
+    const tools = sanitizeTools([valid("gmail_search"), valid("meet_join_meeting")], true);
+    expect(selectToolsForQuery(tools, [{ role: "user", content: "What technologies are in the portfolio?" }])).toEqual([]);
   });
 
   it("preserves the Gmail draft schema sent to the model", () => {

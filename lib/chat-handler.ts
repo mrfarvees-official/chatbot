@@ -216,6 +216,22 @@ export function sanitizeTools(input: unknown, authenticated = false): ModelTool[
   return result;
 }
 
+export function selectToolsForQuery(tools: ModelTool[], messages: ChatMessage[]): ModelTool[] {
+  const query = queryFor(messages).toLowerCase();
+  const wantsGmail = /\b(gmail|email|e-mail|mail|inbox|message|attachment|draft|recipient|sender)\b/.test(query);
+  const wantsCalendar = /\b(calendar|schedule|scheduling|availability|event|appointment|invite|booking|book)\b/.test(query);
+  const wantsMeet = /\b(google\s+meet|meet|meeting|video\s+call|join\s+call)\b/.test(query);
+  if (!wantsGmail && !wantsCalendar && !wantsMeet) return [];
+
+  return tools.filter((tool) => {
+    if (tool.type !== "function") return false;
+    const name = tool.function.name;
+    return (wantsGmail && name.startsWith("gmail_")) ||
+      (wantsCalendar && name.startsWith("calendar_")) ||
+      (wantsMeet && name.startsWith("meet_"));
+  });
+}
+
 export function ndjsonEvent(value: unknown) {
   return `${JSON.stringify(value)}\n`;
 }
@@ -382,7 +398,7 @@ export async function handleChat(req: Request) {
   if (!user?.email || !user.email_confirmed_at) return Response.json({ error: "Authentication required" }, { status: 401 });
   const authenticated = true;
   const authenticatedUser = user;
-  const tools = sanitizeTools(body?.tools, authenticated);
+  const suppliedTools = sanitizeTools(body?.tools, authenticated);
   const sessionId = typeof body?.sessionId === "string" ? body.sessionId : null;
   let contextMessages = messages;
   if (sessionId) {
@@ -396,9 +412,11 @@ export async function handleChat(req: Request) {
     if (!validatedContext) return invalid("Invalid chat history");
     contextMessages = validatedContext;
   }
+  const tools = selectToolsForQuery(suppliedTools, contextMessages);
   if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
     console.debug("[chat] tools", {
       count: tools.length,
+      supplied: suppliedTools.length,
       names: tools.map((tool) =>
         tool.type === "function" ? tool.function.name : "custom",
       ),
