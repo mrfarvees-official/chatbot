@@ -3,7 +3,33 @@
 :root {
   --background: #08080a;
   --foreground: #f4f4f5;
+  --chatbot-sidebar: #0d0d10;
+  --chatbot-panel: #09090b;
+  --chatbot-surface: #17171d;
+  --chatbot-composer: #0d0d10;
+  --chatbot-input: #141419;
+  --chatbot-border: #25252d;
+  --chatbot-border-strong: #30303a;
+  --chatbot-muted: #858591;
+  --chatbot-subtle: #777783;
+  --chatbot-text-soft: #d8d8df;
   color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --background: #f5f7fb;
+  --foreground: #172033;
+  --chatbot-sidebar: #e9edf5;
+  --chatbot-panel: #ffffff;
+  --chatbot-surface: #f0f3f8;
+  --chatbot-composer: #e9edf5;
+  --chatbot-input: #ffffff;
+  --chatbot-border: #d7dce7;
+  --chatbot-border-strong: #c4cad8;
+  --chatbot-muted: #5d687c;
+  --chatbot-subtle: #69758a;
+  --chatbot-text-soft: #273248;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -19,7 +45,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-* { border-color: #27272f; }
+* { border-color: var(--chatbot-border); }
+
+.chatbot-shell { background: var(--background); color: var(--foreground); }
+.chatbot-sidebar { background: var(--chatbot-sidebar); border-color: var(--chatbot-border); }
+.chatbot-panel { background: var(--chatbot-panel); }
+.chatbot-header { border-color: var(--chatbot-border); color: var(--chatbot-muted); }
+.chatbot-surface { background: var(--chatbot-surface); border-color: var(--chatbot-border-strong); }
+.chatbot-composer-bar { background: var(--chatbot-composer); border-color: var(--chatbot-border); }
+.chatbot-composer { background: var(--chatbot-input); border-color: var(--chatbot-border-strong); }
+.chatbot-input { color: var(--foreground); }
+.chatbot-input::placeholder { color: var(--chatbot-subtle); }
+.chatbot-assistant-bubble { background: var(--chatbot-surface); border-color: var(--chatbot-border); color: var(--foreground); }
+.chatbot-muted { color: var(--chatbot-muted); }
+.chatbot-subtle { color: var(--chatbot-subtle); }
+.chatbot-icon-button:hover { background: color-mix(in srgb, var(--chatbot-border) 70%, transparent); color: var(--foreground); }
 
 ::selection { background: #2563eb; color: #fff; }
 

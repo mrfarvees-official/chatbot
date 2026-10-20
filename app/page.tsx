@@ -18,6 +18,7 @@ type Msg =
 type Tool = { name: string; description: string; inputSchema: object };
 type ToolCallResult = { id: string; name: string; args: unknown };
 type ChatSession = { id: string; title: string; updatedAt: string; messageCount: number };
+type Profile = { first_name?: string | null; last_name?: string | null; mobile_number?: string | null };
 
 const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
 
@@ -27,7 +28,7 @@ function formatMessageTime(value?: string) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
 
-function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" }) {
+function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "send" | "stop" | "theme" }) {
   const paths = {
     copy: <><rect x="8" y="8" width="10" height="10" rx="1" /><path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
     edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
@@ -35,6 +36,7 @@ function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" | "se
     check: <path d="m5 12 4 4L19 6" />,
     send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
     stop: <rect x="5" y="5" width="14" height="14" rx="2" />,
+    theme: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></>,
   }[kind];
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">{paths}</svg>;
 }
@@ -53,7 +55,7 @@ function WorkIndicator({ busy, status, streaming, activeTool }: { busy: boolean;
   if (!busy) return null;
   const label = status || (streaming ? "Writing response" : "Thinking");
   const kind = activeTool?.startsWith("gmail_") ? "gmail" : activeTool?.startsWith("calendar_") ? "calendar" : activeTool?.startsWith("meet_") ? "meet" : activeTool ? "browser" : null;
-  return <div className="flex items-center gap-2 py-2 text-xs text-[#858591]" aria-live="polite">
+  return <div className="chatbot-muted flex items-center gap-2 py-2 text-xs" aria-live="polite">
     <span className="chatbot-work-orb flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]/20">{kind ? <ToolIcon kind={kind} /> : <span className="h-2 w-2 rounded-full bg-[#60a5fa]" />}</span>
     <span>{label}</span>
     <span className="flex items-end gap-0.5" aria-hidden="true"><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /><span className="chatbot-work-dot h-1 w-1 rounded-full bg-[#858591]" /></span>
@@ -69,15 +71,27 @@ export default function Home() {
   const [extensionState, setExtensionState] = useState<"checking" | "connected" | "missing">("checking");
   const [extensionVersion, setExtensionVersion] = useState("");
   const [auth, setAuth] = useState<{ status: "checking" | "signed_in" | "signed_out"; email?: string }>({ status: "checking" });
+  const [profile, setProfile] = useState<Profile>({});
   const [streaming, setStreaming] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("chatbot-theme");
+    if (saved === "light" || saved === "dark") window.setTimeout(() => setTheme(saved), 0);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("chatbot-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     extension.ping().then((result) => {
@@ -114,6 +128,16 @@ export default function Home() {
       .then((data) => setAuth(data?.authenticated ? { status: "signed_in", email: data.email } : { status: "signed_out" }))
       .catch(() => setAuth({ status: "signed_out" }));
   }, []);
+
+  useEffect(() => {
+    if (auth.status !== "signed_in") {
+      return;
+    }
+    fetch("/api/profile")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => setProfile(data?.profile ?? {}))
+      .catch(() => setProfile({}));
+  }, [auth.status]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -295,77 +319,89 @@ export default function Home() {
   const visible = messages.filter((message) =>
     (message.role === "user" || message.role === "assistant") && message.content,
   );
+  const profileName = [profile.first_name, profile.last_name].filter(Boolean).join(" ");
+
+  async function signOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.reload();
+  }
 
   return (
-    <main className="flex h-dvh w-full overflow-hidden bg-[#08080a] text-[#f4f4f5]">
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-[#25252d] bg-[#0d0d10] px-4 py-5 md:flex">
+    <main className="chatbot-shell flex h-dvh w-full overflow-hidden">
+      <aside className="chatbot-sidebar hidden w-72 shrink-0 flex-col border-r px-4 py-5 md:flex">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-[#777783]">History</p>
-            <span className="text-sm font-semibold text-[#f4f4f5]">Your chats</span>
+            <p className="chatbot-subtle text-[11px] uppercase tracking-[0.2em]">History</p>
+            <span className="text-sm font-semibold">Your chats</span>
           </div>
-          <button className="rounded-lg border border-[#343440] bg-[#17171d] px-2.5 py-1.5 text-xs text-[#d8d8df] transition hover:bg-[#22222a]" onClick={startNewChat} disabled={busy}>New chat</button>
+          <button className="chatbot-surface rounded-lg border px-2.5 py-1.5 text-xs text-[var(--chatbot-text-soft)] transition hover:brightness-95" onClick={startNewChat} disabled={busy}>New chat</button>
         </div>
-        <div className="space-y-1 overflow-y-auto">
-          {sessions.length === 0 && <p className="rounded-lg border border-dashed border-[#292930] px-3 py-4 text-xs leading-5 text-[#777783]">Your saved conversations will appear here.</p>}
+        <div className="flex-1 space-y-1 overflow-y-auto">
+          {sessions.length === 0 && <p className="chatbot-subtle rounded-lg border border-dashed px-3 py-4 text-xs leading-5">Your saved conversations will appear here.</p>}
           {sessions.map((session) => (
-            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "bg-[#1b1b23] text-[#fff]" : "text-[#a6a6b1] hover:bg-[#15151b] hover:text-[#ededf2]"}`} onClick={() => openChat(session)} disabled={historyLoading}>
+            <button key={session.id} className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${session.id === sessionId ? "chatbot-surface text-[var(--foreground)]" : "text-[var(--chatbot-text-soft)] hover:brightness-95"}`} onClick={() => openChat(session)} disabled={historyLoading}>
               <span className="min-w-0 flex-1 truncate">{session.title}</span>
-              <span className="hidden text-xs text-[#777783] group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
+              <span className="chatbot-subtle hidden text-xs group-hover:inline" onClick={(event) => removeChat(event, session)}>×</span>
             </button>
           ))}
         </div>
+        <div className="chatbot-header mt-4 space-y-3 border-t pt-4 text-xs">
+          <div>
+            <p className="chatbot-subtle mb-2 uppercase tracking-[0.16em]">Browser access</p>
+            {extensionState === "connected" ? (
+              <span className="chatbot-surface inline-flex rounded-full border px-2.5 py-1 text-[var(--chatbot-text-soft)]">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
+            ) : extensionState === "missing" && installUrl ? (
+              <a className="underline" href={installUrl} target="_blank" rel="noreferrer">Install Site Agent extension</a>
+            ) : extensionState === "missing" ? <span>Chat only</span> : <span>Checking extension…</span>}
+          </div>
+          <div>
+            <p className="chatbot-subtle mb-2 uppercase tracking-[0.16em]">Account</p>
+            {auth.status === "signed_in" ? (
+              <div className="chatbot-surface space-y-2 rounded-xl border p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{profileName || "Signed in"}</p>
+                  <p className="chatbot-subtle truncate">{auth.email}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <a className="underline" href="/account">View profile</a>
+                  <button className="underline" onClick={signOut}>Sign out</button>
+                </div>
+              </div>
+            ) : auth.status === "checking" ? <span>Checking sign-in…</span> : <a className="underline" href="/login">Sign in for advanced tools</a>}
+          </div>
+        </div>
       </aside>
-      <section className="flex min-w-0 flex-1 flex-col bg-[#09090b]">
-      <div className="flex min-h-16 items-center justify-between border-b border-[#25252d] px-5 py-3 text-xs text-[#858591] sm:px-8">
+      <section className="chatbot-panel flex min-w-0 flex-1 flex-col">
+      <div className="chatbot-header flex min-h-16 items-center justify-between border-b px-5 py-3 text-xs sm:px-8">
         <span>Portfolio assistant</span>
         <div className="flex items-center gap-3">
-          <button className="rounded-lg border border-[#343440] bg-[#17171d] px-2.5 py-1.5 text-xs text-[#d8d8df] md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
-          {extensionState === "connected" ? (
-            <span className="rounded-full border border-[#343440] bg-[#121217] px-2.5 py-1 text-[#b9b9c4]">Extension connected{extensionVersion ? ` · v${extensionVersion}` : ""}</span>
-          ) : extensionState === "missing" && installUrl ? (
-            <a className="underline" href={installUrl} target="_blank" rel="noreferrer">Install the Site Agent extension to let me act in your browser</a>
-          ) : extensionState === "missing" ? (
-            <span>Chat only</span>
-          ) : (
-            <span>Checking extension…</span>
-          )}
-          {auth.status === "signed_in" ? (
-            <span className="flex items-center gap-2">
-              <a className="underline" href="/account">Signed in{auth.email ? ` · ${auth.email}` : ""}</a>
-              <button
-                className="underline"
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  window.location.reload();
-                }}
-              >
-                Sign out
-              </button>
-            </span>
-          ) : auth.status === "checking" ? (
-            <span>Checking sign-in…</span>
-          ) : (
-            <a className="underline" href="/login">Sign in for advanced Gmail tools</a>
-          )}
+          <button
+            className="chatbot-surface chatbot-icon-button rounded-lg border p-2 text-[var(--chatbot-text-soft)]"
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+          >
+            <ActionIcon kind="theme" />
+          </button>
+          <button className="chatbot-surface rounded-lg border px-2.5 py-1.5 text-xs text-[var(--chatbot-text-soft)] md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
         <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-3 pb-4">
-        {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="text-sm text-[#858591]">Ask me anything about the portfolio.</p></div></div>}
+        {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="chatbot-muted text-sm">Ask me anything about the portfolio.</p></div></div>}
         {visible.map((message, index) => (
           <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[85%]`}>
-            <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
-            <div className={`mt-1 flex items-center gap-2 text-[11px] text-[#777783] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "chatbot-assistant-bubble rounded-2xl rounded-bl-md border px-4 py-3"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
+            <div className={`chatbot-subtle mt-1 flex items-center gap-2 text-[11px] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
               {message.createdAt && <time className={message.role === "user" ? "order-2 mr-1" : "order-1"} dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>}
               <span className={`flex gap-1 ${message.role === "user" ? "order-1" : "order-2"}`}>
-                <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
-                {message.role === "user" && <><button title="Edit message" aria-label="Edit message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => editMessage(message.content)}><ActionIcon kind="edit" /></button><button title="Resend message" aria-label="Resend message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => send(message.content)}><ActionIcon kind="resend" /></button></>}
+                <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="chatbot-icon-button rounded p-1" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
+                {message.role === "user" && <><button title="Edit message" aria-label="Edit message" className="chatbot-icon-button rounded p-1" onClick={() => editMessage(message.content)}><ActionIcon kind="edit" /></button><button title="Resend message" aria-label="Resend message" className="chatbot-icon-button rounded p-1" onClick={() => send(message.content)}><ActionIcon kind="resend" /></button></>}
               </span>
             </div>
           </div>
         ))}
-        {streaming && <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"><MarkdownViewer content={streaming} /></div>}
+        {streaming && <div className="chatbot-assistant-bubble w-fit max-w-[85%] rounded-2xl rounded-bl-md border px-4 py-3"><MarkdownViewer content={streaming} /></div>}
         <WorkIndicator busy={busy} status={status} streaming={streaming} activeTool={activeTool} />
         <div ref={bottomRef} />
         </div>
@@ -377,10 +413,10 @@ export default function Home() {
       )}
       {status && !busy && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#858591] sm:px-8">{status}</p>}
       {error && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#f87171] sm:px-8">{error}</p>}
-      <div className="border-t border-[#25252d] bg-[#0d0d10] px-5 py-4 sm:px-8">
-        <div className="mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border border-[#30303a] bg-[#141419] p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
-        <input ref={inputRef} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-[#f4f4f5] outline-none placeholder:text-[#6f6f7b]" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
-        {busy ? <button title="Stop response" aria-label="Stop response" className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#343440] text-sm text-[#d8d8df] transition hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}><ActionIcon kind="stop" /></button> : <button title="Send message" aria-label="Send message" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}><ActionIcon kind="send" /></button>}
+      <div className="chatbot-composer-bar border-t px-5 py-4 sm:px-8">
+        <div className="chatbot-composer mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
+        <input ref={inputRef} className="chatbot-input min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] outline-none" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
+        {busy ? <button title="Stop response" aria-label="Stop response" className="chatbot-surface flex h-10 w-10 items-center justify-center rounded-xl border text-sm text-[var(--chatbot-text-soft)] transition hover:brightness-95" onClick={() => abortRef.current?.abort()}><ActionIcon kind="stop" /></button> : <button title="Send message" aria-label="Send message" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}><ActionIcon kind="send" /></button>}
         </div>
       </div>
       </section>
