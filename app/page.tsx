@@ -231,11 +231,20 @@ export default function Home() {
           completed = true;
           break;
         }
+        const outcomes: string[] = [];
         for (const call of calls) {
           setActiveTool(call.name);
           setStatus(`Opening ${call.name.replaceAll("_", " ")}… check for an approval popup`);
           const result = await extension.callTool(call.name, call.args).catch((e) => ({ ok: false, reason: String(e) }));
           setActiveTool(null);
+          if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+            const failure = result as { reason?: unknown };
+            outcomes.push(`${call.name.replaceAll("_", " ")} could not complete: ${String(failure.reason ?? "unknown error")}.`);
+          } else if (result && typeof result === "object" && "note" in result && typeof result.note === "string") {
+            outcomes.push(result.note);
+          } else {
+            outcomes.push(`${call.name.replaceAll("_", " ")} completed successfully.`);
+          }
           const toolMessage: Msg = {
             role: "tool",
             tool_call_id: call.id,
@@ -244,8 +253,16 @@ export default function Home() {
           working = [...working, toolMessage];
           setMessages(working);
         }
+        working = [...working, {
+          role: "assistant",
+          content: outcomes.join("\n"),
+          createdAt: new Date().toISOString(),
+        }];
+        setMessages(working);
         if (!privateMode) await saveHistory(activeSessionId, working);
         setStatus("");
+        completed = true;
+        break;
       }
       if (!completed) setStatus("Stopped after 6 rounds.");
     } catch (e) {
