@@ -21,6 +21,16 @@ type ChatSession = { id: string; title: string; updatedAt: string; messageCount:
 
 const installUrl = process.env.NEXT_PUBLIC_EXTENSION_URL;
 
+function ActionIcon({ kind }: { kind: "copy" | "edit" | "resend" | "check" }) {
+  const paths = {
+    copy: <><rect x="8" y="8" width="10" height="10" rx="1" /><path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+    edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+    resend: <><path d="M3 12a9 9 0 0 1 15.2-6.5L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.2 6.5L3 16" /><path d="M3 21v-5h5" /></>,
+    check: <path d="m5 12 4 4L19 6" />,
+  }[kind];
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">{paths}</svg>;
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -34,8 +44,10 @@ export default function Home() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     extension.ping().then((result) => {
@@ -77,8 +89,8 @@ export default function Home() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, status]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || busy) return;
     setInput("");
     setError("");
@@ -178,6 +190,22 @@ export default function Home() {
       setBusy(false);
       abortRef.current = null;
     }
+  }
+
+  async function copyMessage(key: string, content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessage(key);
+      window.setTimeout(() => setCopiedMessage((current) => current === key ? null : current), 1500);
+    } catch {
+      setError("Could not copy this message");
+    }
+  }
+
+  function editMessage(content: string) {
+    setInput(content);
+    setError("");
+    inputRef.current?.focus();
   }
 
   async function saveHistory(id: string | null, history: Msg[]) {
@@ -293,7 +321,13 @@ export default function Home() {
         <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-3 pb-4">
         {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="text-sm text-[#858591]">Ask me anything about the portfolio.</p></div></div>}
         {visible.map((message, index) => (
-          <div key={index} className={message.role === "user" ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
+          <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[85%]`}>
+            <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
+            <div className={`mt-1 flex gap-2 text-[11px] text-[#777783] opacity-0 transition group-hover:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              <button title={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} aria-label={copiedMessage === `${message.role}-${index}` ? "Copied" : "Copy message"} className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => copyMessage(`${message.role}-${index}`, message.content ?? "")}>{copiedMessage === `${message.role}-${index}` ? <ActionIcon kind="check" /> : <ActionIcon kind="copy" />}</button>
+              {message.role === "user" && <><button title="Edit message" aria-label="Edit message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => editMessage(message.content)}><ActionIcon kind="edit" /></button><button title="Resend message" aria-label="Resend message" className="rounded p-1 hover:bg-[#25252d] hover:text-[#d8d8df]" onClick={() => send(message.content)}><ActionIcon kind="resend" /></button></>}
+            </div>
+          </div>
         ))}
         {streaming && <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md border border-[#292930] bg-[#17171d] px-4 py-3 text-[#ededf2]"><MarkdownViewer content={streaming} /></div>}
         <div ref={bottomRef} />
@@ -308,8 +342,8 @@ export default function Home() {
       {error && <p className="mx-auto w-full max-w-4xl px-5 pb-2 text-sm text-[#f87171] sm:px-8">{error}</p>}
       <div className="border-t border-[#25252d] bg-[#0d0d10] px-5 py-4 sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border border-[#30303a] bg-[#141419] p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
-        <input className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-[#f4f4f5] outline-none placeholder:text-[#6f6f7b]" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
-        {busy ? <button className="rounded-xl border border-[#343440] px-4 text-sm text-[#d8d8df] hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-[#2563eb] px-4 text-sm font-medium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={send}>Send</button>}
+        <input ref={inputRef} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-[#f4f4f5] outline-none placeholder:text-[#6f6f7b]" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
+        {busy ? <button className="rounded-xl border border-[#343440] px-4 text-sm text-[#d8d8df] hover:bg-[#22222a]" onClick={() => abortRef.current?.abort()}>Stop</button> : <button className="rounded-xl bg-[#2563eb] px-4 text-sm font-medium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}>Send</button>}
         </div>
       </div>
       </section>
