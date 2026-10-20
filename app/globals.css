@@ -22,6 +22,8 @@
   --chatbot-diagram-text: #f4f4f5;
   --chatbot-diagram-muted: #a6a6b1;
   --chatbot-diagram-grid: #3f3f4a;
+  --chatbot-history-hover: #181820;
+  --chatbot-history-selected: #252535;
   color-scheme: dark;
 }
 
@@ -47,6 +49,8 @@
   --chatbot-diagram-text: #172033;
   --chatbot-diagram-muted: #526078;
   --chatbot-diagram-grid: #aeb8c9;
+  --chatbot-history-hover: #e8eef8;
+  --chatbot-history-selected: #d5e2f5;
   color-scheme: light;
 }
 
@@ -81,7 +85,8 @@ body {
 .chatbot-error { color: #dc2626; }
 .chatbot-icon-button:hover { background: color-mix(in srgb, var(--chatbot-border) 70%, transparent); color: var(--foreground); }
 .chatbot-history-item { color: var(--chatbot-text-soft); }
-.chatbot-history-item:hover, .chatbot-history-selected { background: var(--chatbot-surface); color: var(--foreground); }
+.chatbot-history-item:hover { background: var(--chatbot-history-hover); color: var(--foreground); }
+.chatbot-history-selected { background: var(--chatbot-history-selected); color: var(--foreground); box-shadow: inset 3px 0 0 #2563eb; }
 
 [data-theme="light"] .chatbot-avatar { background: #dbe4f2; color: #172033; }
 
