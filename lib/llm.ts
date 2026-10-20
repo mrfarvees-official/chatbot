@@ -68,6 +68,7 @@ export async function createModelStream(
   tools: ModelTool[],
   signal: AbortSignal,
   profile?: VisitorProfile | null,
+  toolChoice: OpenAI.Chat.ChatCompletionToolChoiceOption = "auto",
 ) {
   const body = {
     model: NVIDIA_CHAT_MODEL,
@@ -75,7 +76,7 @@ export async function createModelStream(
       { role: "system", content: buildSystemPrompt(sources, tools.length > 0, profile) },
       ...toModelMessages(messages),
     ],
-    ...(tools.length ? { tools, tool_choice: "auto" as const } : {}),
+    ...(tools.length ? { tools, tool_choice: toolChoice } : {}),
     stream: true,
     ...(process.env.NVIDIA_REASONING_EFFORT
       ? { reasoning_effort: process.env.NVIDIA_REASONING_EFFORT }

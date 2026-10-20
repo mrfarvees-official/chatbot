@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "./llm";
-import { fillProfileTokens, ndjsonEvent, parseHistoryMessages, parseMessages, sanitizeTools, selectToolsForQuery } from "./chat-handler";
+import { fillProfileTokens, ndjsonEvent, parseHistoryMessages, parseMessages, preferredToolForQuery, sanitizeTools, selectToolsForQuery } from "./chat-handler";
 
 describe("chat validation", () => {
   it("accepts a saved conversation ending with an assistant message", () => {
@@ -102,6 +102,20 @@ describe("tool sanitization", () => {
       "calendar_list_events",
       "calendar_read_event",
     ]);
+  });
+
+  it("forces the first direct calendar lookup to the search tool", () => {
+    const tools = sanitizeTools([
+      valid("calendar_search_events"),
+      valid("calendar_list_events"),
+      valid("calendar_read_event"),
+    ], true);
+    expect(preferredToolForQuery(tools, [{ role: "user", content: "Can you check my calendar if any meetings today found?" }])).toBe("calendar_search_events");
+    expect(preferredToolForQuery(tools, [
+      { role: "user", content: "Can you check my calendar if any meetings today found?" },
+      { role: "assistant", content: null, tool_calls: [{ id: "1", type: "function", function: { name: "calendar_search_events", arguments: "{}" } }] },
+      { role: "tool", tool_call_id: "1", content: '{"ok":true}' },
+    ])).toBeNull();
   });
 
   it("does not send browser tools for ordinary knowledge questions", () => {

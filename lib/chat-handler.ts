@@ -267,6 +267,27 @@ export function selectToolsForQuery(tools: ModelTool[], messages: ChatMessage[])
   return tools.filter((tool) => tool.type === "function" && selected.has(tool.function.name));
 }
 
+export function preferredToolForQuery(tools: ModelTool[], messages: ChatMessage[]): string | null {
+  const last = messages.at(-1);
+  if (!last || last.role !== "user") return null;
+  const query = queryFor(messages).toLowerCase();
+  const available = new Set(tools.map((tool) => tool.type === "function" ? tool.function.name : ""));
+  const choose = (name: string) => available.has(name) ? name : null;
+  if (/\b(calendar|schedule|availability|event|appointment|meeting)\b/.test(query) &&
+      /\b(check|find|show|list|search|today|tomorrow|upcoming|meeting|event|read)\b/.test(query)) {
+    return choose("calendar_search_events");
+  }
+  if (/\b(gmail|email|e-mail|mail|inbox|message)\b/.test(query) &&
+      /\b(search|find|check|show|read|open|latest|inbox|message|sender|from)\b/.test(query)) {
+    return choose("gmail_search");
+  }
+  if (/\b(draft|compose)\b/.test(query)) return choose("gmail_compose_draft");
+  if (/\b(join|start)\b/.test(query) && /\b(meet|meeting|call)\b/.test(query)) {
+    return choose(query.includes("join") ? "meet_join_meeting" : "meet_start_meeting");
+  }
+  return null;
+}
+
 export function ndjsonEvent(value: unknown) {
   return `${JSON.stringify(value)}\n`;
 }
@@ -319,7 +340,15 @@ function ndjsonStream(
     async start(controller) {
       const write = (value: unknown) => controller.enqueue(encoder.encode(ndjsonEvent(value)));
       try {
-        const stream = await createModelStream(messages, sources, tools, signal, profile);
+        const preferred = preferredToolForQuery(tools, messages);
+        const stream = await createModelStream(
+          messages,
+          sources,
+          tools,
+          signal,
+          profile,
+          preferred ? { type: "function", function: { name: preferred } } : "auto",
+        );
         let content = "";
         const calls = new Map<number, ToolCall>();
         for await (const chunk of stream) {
