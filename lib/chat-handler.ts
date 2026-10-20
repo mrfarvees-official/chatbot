@@ -229,6 +229,16 @@ function queryFor(messages: ChatMessage[]) {
   return previous ? `${previous}\n${latestUser.content}` : latestUser.content;
 }
 
+function sameMessage(left: ChatMessage, right: ChatMessage) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sessionContext(sessionMessages: ChatMessage[], requestMessages: ChatMessage[]) {
+  const hasStoredPrefix = sessionMessages.length <= requestMessages.length &&
+    sessionMessages.every((message, index) => sameMessage(message, requestMessages[index]));
+  return hasStoredPrefix ? requestMessages : [...sessionMessages, ...requestMessages];
+}
+
 export function fillProfileTokens(value: unknown, profile?: VisitorProfile | null): unknown {
   if (!profile) return value;
   if (typeof value === "string") {
@@ -374,8 +384,18 @@ export async function handleChat(req: Request) {
   const authenticatedUser = user;
   const tools = sanitizeTools(body?.tools, authenticated);
   const sessionId = typeof body?.sessionId === "string" ? body.sessionId : null;
-  if (sessionId && !getChatMessages(authenticatedUser.id, sessionId))
-    return Response.json({ error: "Chat session not found" }, { status: 404 });
+  let contextMessages = messages;
+  if (sessionId) {
+    const stored = getChatMessages(authenticatedUser.id, sessionId);
+    if (!stored) return Response.json({ error: "Chat session not found" }, { status: 404 });
+    const storedMessages = stored.map((message) =>
+      Object.fromEntries(Object.entries(message).filter(([key]) => key !== "createdAt")) as ChatMessage,
+    );
+    contextMessages = sessionContext(storedMessages, messages);
+    const validatedContext = parseMessages(contextMessages);
+    if (!validatedContext) return invalid("Invalid chat history");
+    contextMessages = validatedContext;
+  }
   if (process.env.NEXT_PUBLIC_EXTENSION_DEBUG_LOGGING === "true") {
     console.debug("[chat] tools", {
       count: tools.length,
@@ -384,8 +404,8 @@ export async function handleChat(req: Request) {
       ),
     });
   }
-  const sources = await retrieve(queryFor(messages));
-  return new Response(ndjsonStream(messages, sources, tools, req.signal, profile, sessionId ? { userId: authenticatedUser.id, sessionId } : undefined), {
+  const sources = await retrieve(queryFor(contextMessages));
+  return new Response(ndjsonStream(contextMessages, sources, tools, req.signal, profile, sessionId ? { userId: authenticatedUser.id, sessionId } : undefined), {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store",
