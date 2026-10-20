@@ -24,6 +24,8 @@
   --chatbot-diagram-grid: #3f3f4a;
   --chatbot-history-hover: #181820;
   --chatbot-history-selected: #252535;
+  --chatbot-focus: #4b5563;
+  --chatbot-brand: #2563eb;
   color-scheme: dark;
 }
 
@@ -51,6 +53,8 @@
   --chatbot-diagram-grid: #aeb8c9;
   --chatbot-history-hover: #e8eef8;
   --chatbot-history-selected: #d5e2f5;
+  --chatbot-focus: #7c9ed1;
+  --chatbot-brand: #2563eb;
   color-scheme: light;
 }
 
@@ -76,6 +80,7 @@ body {
 .chatbot-surface { background: var(--chatbot-surface); border-color: var(--chatbot-border-strong); }
 .chatbot-composer-bar { background: var(--chatbot-composer); border-color: var(--chatbot-border); }
 .chatbot-composer { background: var(--chatbot-input); border-color: var(--chatbot-border-strong); }
+.chatbot-composer:focus-within { border-color: var(--chatbot-focus); box-shadow: 0 12px 32px color-mix(in srgb, var(--chatbot-focus) 12%, transparent); }
 .chatbot-input { color: var(--foreground); }
 .chatbot-input::placeholder { color: var(--chatbot-subtle); }
 .chatbot-assistant-bubble { background: var(--chatbot-surface); border-color: var(--chatbot-border); color: var(--foreground); }
@@ -87,6 +92,8 @@ body {
 .chatbot-history-item { color: var(--chatbot-text-soft); }
 .chatbot-history-item:hover { background: var(--chatbot-history-hover); color: var(--foreground); }
 .chatbot-history-selected { background: var(--chatbot-history-selected); color: var(--foreground); box-shadow: inset 3px 0 0 #2563eb; }
+.chatbot-brand-mark { background: var(--chatbot-brand); color: #fff; box-shadow: 0 8px 20px color-mix(in srgb, var(--chatbot-brand) 28%, transparent); }
+.chatbot-status-dot { background: #22c55e; box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 18%, transparent); }
 
 [data-theme="light"] .chatbot-avatar { background: #dbe4f2; color: #172033; }
 

@@ -330,6 +330,13 @@ export default function Home() {
   return (
     <main className="chatbot-shell flex h-dvh w-full overflow-hidden">
       <aside className="chatbot-sidebar hidden w-72 shrink-0 flex-col border-r px-4 py-5 md:flex">
+        <div className="mb-7 flex items-center gap-3">
+          <span className="chatbot-brand-mark flex h-9 w-9 items-center justify-center rounded-xl text-lg">✦</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">Portfolio assistant</p>
+            <p className="chatbot-subtle text-xs">Personal workspace</p>
+          </div>
+        </div>
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="chatbot-subtle text-[11px] uppercase tracking-[0.2em]">History</p>
@@ -383,7 +390,7 @@ export default function Home() {
       </aside>
       <section className="chatbot-panel flex min-w-0 flex-1 flex-col">
       <div className="chatbot-header flex min-h-16 items-center justify-between border-b px-5 py-3 text-xs sm:px-8">
-        <span>Portfolio assistant</span>
+        <span className="flex items-center gap-2"><span className="chatbot-status-dot h-1.5 w-1.5 rounded-full" />Portfolio assistant</span>
         <div className="flex items-center gap-3">
           <button
             className="chatbot-surface chatbot-icon-button rounded-lg border p-2 text-[var(--chatbot-text-soft)]"
@@ -396,11 +403,11 @@ export default function Home() {
           <button className="chatbot-surface rounded-lg border px-2.5 py-1.5 text-xs text-[var(--chatbot-text-soft)] md:hidden" onClick={startNewChat} disabled={busy}>New chat</button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
-        <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-3 pb-4">
+      <div className="flex-1 overflow-y-auto px-5 py-7 sm:px-8">
+        <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end space-y-5 pb-5">
         {visible.length === 0 && <div className="mb-auto flex min-h-[38vh] items-center justify-center"><div className="text-center"><div className="mb-3 text-3xl">✦</div><p className="chatbot-muted text-sm">Ask me anything about the portfolio.</p></div></div>}
         {visible.map((message, index) => (
-          <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[85%]`}>
+          <div key={index} className={`group relative ${message.role === "user" ? "ml-auto" : ""} w-fit max-w-[min(85%,42rem)]`}>
             <div className={message.role === "user" ? "whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#2563eb] px-4 py-3 text-[15px] leading-6 text-white shadow-lg shadow-blue-950/20" : "chatbot-assistant-bubble rounded-2xl rounded-bl-md border px-4 py-3"}>{message.role === "assistant" ? <MarkdownViewer content={message.content ?? ""} /> : message.content}</div>
             <div className={`chatbot-subtle mt-1 flex items-center gap-2 text-[11px] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
               {message.createdAt && <time className={message.role === "user" ? "order-2 mr-1" : "order-1"} dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>}
@@ -424,7 +431,7 @@ export default function Home() {
       {status && !busy && <p className="chatbot-muted mx-auto w-full max-w-4xl px-5 pb-2 text-sm sm:px-8">{status}</p>}
       {error && <p className="chatbot-error mx-auto w-full max-w-4xl px-5 pb-2 text-sm sm:px-8">{error}</p>}
       <div className="chatbot-composer-bar border-t px-5 py-4 sm:px-8">
-        <div className="chatbot-composer mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border p-1.5 shadow-2xl shadow-black/20 focus-within:border-[#4b4b5b]">
+        <div className="chatbot-composer mx-auto flex w-full max-w-4xl gap-2 rounded-2xl border p-1.5 shadow-2xl shadow-black/20">
         <input ref={inputRef} className="chatbot-input min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] outline-none" placeholder="Ask me anything…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()} disabled={busy || auth.status !== "signed_in"} />
         {busy ? <button title="Stop response" aria-label="Stop response" className="chatbot-surface flex h-10 w-10 items-center justify-center rounded-xl border text-sm text-[var(--chatbot-text-soft)] transition hover:brightness-95" onClick={() => abortRef.current?.abort()}><ActionIcon kind="stop" /></button> : <button title="Send message" aria-label="Send message" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40" disabled={!input.trim() || auth.status !== "signed_in"} onClick={() => send()}><ActionIcon kind="send" /></button>}
         </div>
