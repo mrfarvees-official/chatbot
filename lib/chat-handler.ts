@@ -219,17 +219,52 @@ export function sanitizeTools(input: unknown, authenticated = false): ModelTool[
 export function selectToolsForQuery(tools: ModelTool[], messages: ChatMessage[]): ModelTool[] {
   const query = queryFor(messages).toLowerCase();
   const wantsGmail = /\b(gmail|email|e-mail|mail|inbox|message|attachment|draft|recipient|sender)\b/.test(query);
-  const wantsCalendar = /\b(calendar|schedule|scheduling|availability|event|appointment|invite|booking|book)\b/.test(query);
-  const wantsMeet = /\b(google\s+meet|meet|meeting|video\s+call|join\s+call)\b/.test(query);
-  if (!wantsGmail && !wantsCalendar && !wantsMeet) return [];
+  const wantsCalendar = /\b(calendar|schedule|scheduling|availability|event|appointment|invite|booking|book|meeting)\b/.test(query);
+  const wantsMeet = /\b(google\s+meet|meet link|join (the )?(current )?meet|video\s+call|join\s+call|microphone|camera|screen share)\b/.test(query);
+  const selected = new Set<string>();
+  const add = (...names: string[]) => names.forEach((name) => selected.add(name));
 
-  return tools.filter((tool) => {
-    if (tool.type !== "function") return false;
-    const name = tool.function.name;
-    return (wantsGmail && name.startsWith("gmail_")) ||
-      (wantsCalendar && name.startsWith("calendar_")) ||
-      (wantsMeet && name.startsWith("meet_"));
-  });
+  if (wantsGmail) {
+    if (/\b(search|find|check|show|read|open|latest|inbox|message|attachment|sender|from)\b/.test(query)) {
+      add("gmail_search", "gmail_read_email");
+      if (/\battachment/.test(query)) add("gmail_list_attachments", "gmail_open_attachment");
+    }
+    if (/\b(draft|compose|send|reply|forward|archive|delete|label|mark)\b/.test(query)) {
+      if (/\b(reply|forward)\b/.test(query)) add("gmail_reply_draft", "gmail_forward_draft");
+      else add("gmail_compose_draft", "gmail_send_current_draft");
+    }
+    if (/\b(meeting|calendar)\b/.test(query)) add("gmail_find_meeting_links");
+  }
+
+  if (wantsCalendar) {
+    if (/\b(check|find|show|list|search|today|tomorrow|upcoming|meeting|event|read)\b/.test(query)) {
+      add("calendar_search_events", "calendar_list_events", "calendar_read_event");
+    }
+    if (/\b(create|schedule|book|set up|add)\b/.test(query)) add("calendar_create_event");
+    if (/\b(update|change|reschedule|edit)\b/.test(query)) add("calendar_update_event");
+    if (/\b(delete|cancel|remove)\b/.test(query)) add("calendar_delete_event");
+    if (/\brsvp\b|\baccept\b|\bdecline\b/.test(query)) add("calendar_rsvp");
+    if (/\bguest|attendee|invite/.test(query)) add("calendar_add_guests", "calendar_compose_invite_email");
+    if (/\bavailability|free|open time|slot/.test(query)) add("calendar_open_availability");
+  }
+
+  if (wantsMeet) {
+    if (/\bjoin\b/.test(query)) add("meet_join_meeting", "meet_join_link");
+    if (/\bstart|schedule/.test(query)) add("meet_start_meeting", "meet_schedule_meeting");
+    if (/\bmicrophone|mic/.test(query)) add("meet_toggle_mic");
+    if (/\bcamera|video/.test(query)) add("meet_toggle_camera");
+    if (/\bscreen share|share screen/.test(query)) add("meet_share_screen");
+    if (/\bleave\b/.test(query)) add("meet_leave_call");
+    if (/\bparticipant/.test(query)) add("meet_list_participants", "meet_manage_participant");
+    if (/\bchat|message/.test(query)) add("meet_read_chat", "meet_send_chat");
+    if (/\bcaption/.test(query)) add("meet_toggle_captions", "meet_read_captions");
+    if (/\brecord/.test(query)) add("meet_toggle_recording");
+    if (/\braise hand|reaction/.test(query)) add("meet_raise_hand", "meet_send_reaction");
+    if (/\bsummary/.test(query)) add("meet_get_summary");
+    if (/\binvite|email/.test(query)) add("meet_compose_invite_email");
+  }
+
+  return tools.filter((tool) => tool.type === "function" && selected.has(tool.function.name));
 }
 
 export function ndjsonEvent(value: unknown) {

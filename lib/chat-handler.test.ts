@@ -76,6 +76,7 @@ describe("tool sanitization", () => {
   it("sends only the relevant extension tool family to the model", () => {
     const tools = sanitizeTools([
       valid("gmail_search"),
+      valid("gmail_read_email"),
       valid("gmail_compose_draft"),
       valid("calendar_search_events"),
       valid("meet_join_meeting"),
@@ -83,7 +84,23 @@ describe("tool sanitization", () => {
     const selected = selectToolsForQuery(tools, [{ role: "user", content: "Search Gmail for messages from account@example.com" }]);
     expect(selected.map((tool) => (tool as { function: { name: string } }).function.name)).toEqual([
       "gmail_search",
-      "gmail_compose_draft",
+      "gmail_read_email",
+    ]);
+  });
+
+  it("keeps a calendar lookup focused on read tools", () => {
+    const tools = sanitizeTools([
+      valid("calendar_search_events"),
+      valid("calendar_list_events"),
+      valid("calendar_read_event"),
+      valid("calendar_create_event"),
+      valid("calendar_delete_event"),
+    ], true);
+    const selected = selectToolsForQuery(tools, [{ role: "user", content: "Can you check my calendar if any meetings today found?" }]);
+    expect(selected.map((tool) => (tool as { function: { name: string } }).function.name)).toEqual([
+      "calendar_search_events",
+      "calendar_list_events",
+      "calendar_read_event",
     ]);
   });
 
